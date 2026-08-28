@@ -1,0 +1,24 @@
+{
+  "name": "simplewebgl",
+  "version": "1.0.0",
+  "description": "",
+  "main": "rollup.config.js",
+  "scripts": {
+    "build": "npx rollup -c",
+    "server": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pawelworzala86/simpleWebGL.git"
+  },
+  "keywords": [],
+  "author": "Paweł Worzała",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/pawelworzala86/simpleWebGL/issues"
+  },
+  "homepage": "https://github.com/pawelworzala86/simpleWebGL#readme",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}

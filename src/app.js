@@ -1,5 +1,8 @@
+import http from './http.js'
+
+
 var canvas = document.getElementById('my_Canvas');
-gl = canvas.getContext('webgl2');
+const gl = canvas.getContext('webgl2');
 
 var vertices = [
     -0.5, 0.5, 0.0,
@@ -8,7 +11,7 @@ var vertices = [
      0.5, 0.5, 0.0
 ];
 
-indices = [3,2,1,3,1,0];
+const indices = [3,2,1,3,1,0];
 
 var vertex_buffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
@@ -36,7 +39,7 @@ var coords2 = [
     0.0, 1.0
 ];
 
-indices2 = [3,2,1,3,1,0];
+const indices2 = [3,2,1,3,1,0];
 
 var vertex_buffer2 = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer2);
@@ -59,12 +62,7 @@ gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 
 
 
-var vertCode =`#version 300 es
-    layout(location = 0) in vec3 coordinates;
-    void main(void) {
-     gl_Position = vec4(coordinates, 1.0);
-    }`
-
+var vertCode = await http.get('/shaders/default.vert')
 var vertShader = gl.createShader(gl.VERTEX_SHADER);
 gl.shaderSource(vertShader, vertCode);
 gl.compileShader(vertShader);
@@ -72,13 +70,7 @@ if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
     console.error(gl.getShaderInfoLog(vertShader));
 }
 
-var fragCode =`#version 300 es
-precision mediump float;
-out vec4 outColor;
-    void main(void) {
-     outColor = vec4(1.0, 1.0, 1.0, 1.0);
-    }`
-
+var fragCode = await http.get('/shaders/default.frag')
 var fragShader = gl.createShader(gl.FRAGMENT_SHADER);
 gl.shaderSource(fragShader, fragCode);
 gl.compileShader(fragShader);
@@ -94,15 +86,7 @@ gl.useProgram(shaderProgram);
 
 
 
-var vertCode2 =`#version 300 es
-    layout(location = 0) in vec3 coordinates;
-    layout(location = 1) in vec2 coord;
-    out vec2 uv;
-    void main(void) {
-     gl_Position = vec4(coordinates, 1.0);
-     uv = coord;
-    }`
-
+var vertCode2 = await http.get('/shaders/panel.vert')
 var vertShader2 = gl.createShader(gl.VERTEX_SHADER);
 gl.shaderSource(vertShader2, vertCode2);
 gl.compileShader(vertShader2);
@@ -110,16 +94,7 @@ if (!gl.getShaderParameter(vertShader2, gl.COMPILE_STATUS)) {
     console.error(gl.getShaderInfoLog(vertShader2));
 }
 
-
-var fragCode2 =`#version 300 es
-precision mediump float;
-uniform sampler2D tex;
-out vec4 outColor;
-in vec2 uv;
-    void main(void) {
-     outColor = texture(tex, uv);
-    }`
-
+var fragCode2 = await http.get('/shaders/panel.frag')
 var fragShader2 = gl.createShader(gl.FRAGMENT_SHADER);
 gl.shaderSource(fragShader2, fragCode2);
 gl.compileShader(fragShader2)
