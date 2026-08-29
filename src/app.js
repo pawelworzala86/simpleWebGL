@@ -158,10 +158,10 @@ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
 
 
-const rbo = gl.createRenderbuffer();
+/*const rbo = gl.createRenderbuffer();
 gl.bindRenderbuffer(gl.RENDERBUFFER, rbo);
 gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, canvas.width, canvas.height);
-
+*/
 const fbo = gl.createFramebuffer();
 gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
 
@@ -181,16 +181,49 @@ gl.framebufferTexture2D(
     0
 );
 
-gl.framebufferRenderbuffer(
+/*gl.framebufferRenderbuffer(
     gl.FRAMEBUFFER,
     gl.DEPTH_ATTACHMENT,
     gl.RENDERBUFFER,
     rbo
-);
+);*/
 
 if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
     console.error("FBO incomplete");
 }
+
+
+
+
+
+
+
+
+
+/*==================== MATRIX ====================== */
+
+function get_projection(angle, a, zMin, zMax) {
+var ang = Math.tan((angle*.5)*Math.PI/180);//angle*.5
+return [
+    0.5/ang, 0 , 0, 0,
+    0, 0.5*a/ang, 0, 0,
+    0, 0, -(zMax+zMin)/(zMax-zMin), -1,
+    0, 0, (-2*zMax*zMin)/(zMax-zMin), 0 
+    ];
+}
+
+var proj_matrix = get_projection(40, canvas.width/canvas.height, 1, 100);
+var mo_matrix = [ 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 ];
+var view_matrix = [ 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 ];
+
+view_matrix[14] = view_matrix[14]-6;
+
+
+
+
+
+
+
 
 
 
@@ -216,6 +249,15 @@ function animate(time){
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(0);
 
+
+    var _Pmatrix = gl.getUniformLocation(shaderProgram, "Pmatrix");
+    var _Vmatrix = gl.getUniformLocation(shaderProgram, "Vmatrix");
+    var _Mmatrix = gl.getUniformLocation(shaderProgram, "Mmatrix");
+
+    gl.uniformMatrix4fv(_Pmatrix, false, proj_matrix);
+    gl.uniformMatrix4fv(_Vmatrix, false, view_matrix);
+    gl.uniformMatrix4fv(_Mmatrix, false, mo_matrix);
+
     
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Index_Buffer);
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
@@ -232,7 +274,7 @@ function animate(time){
     gl.useProgram(shaderProgram2);
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.bindTexture(gl.TEXTURE_2D, depthTex);
     gl.uniform1i(gl.getUniformLocation(shaderProgram2, "tex"), 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer2);
