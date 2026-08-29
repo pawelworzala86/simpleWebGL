@@ -134,6 +134,30 @@ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
 
+
+
+const depthTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, depthTex);
+
+gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    gl.DEPTH_COMPONENT24,      // internal format
+    canvas.width,
+    canvas.height,
+    0,
+    gl.DEPTH_COMPONENT,        // format
+    gl.UNSIGNED_INT,           // type
+    null
+);
+
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+
+
 const rbo = gl.createRenderbuffer();
 gl.bindRenderbuffer(gl.RENDERBUFFER, rbo);
 gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, canvas.width, canvas.height);
@@ -146,6 +170,14 @@ gl.framebufferTexture2D(
     gl.COLOR_ATTACHMENT0,
     gl.TEXTURE_2D,
     tex,
+    0
+);
+
+gl.framebufferTexture2D(
+    gl.FRAMEBUFFER,
+    gl.DEPTH_ATTACHMENT,
+    gl.TEXTURE_2D,
+    depthTex,
     0
 );
 
@@ -165,6 +197,9 @@ if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
 
 
 function animate(time){
+
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
 
     gl.clearColor(0.5, 0.5, 0.5, 0.9);
     gl.enable(gl.DEPTH_TEST);
