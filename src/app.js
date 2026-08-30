@@ -1,59 +1,39 @@
 import http from './http.js'
 import Shader from './webgl/shader.js'
 
-var canvas = document.getElementById('my_Canvas');
-const gl = canvas.getContext('webgl2');
+var canvas = document.getElementById('my_Canvas')
+const gl = canvas.getContext('webgl2')
 
-var vertices = [
-    -0.5, 0.5, 0.0,
-    -0.5,-0.5, 0.0,
-     0.5,-0.5, 0.0,
-     0.5, 0.5, 0.0
-];
 
-const indices = [3,2,1,3,1,0];
+const geometry1 = await http.get('/models/box.json','json')
 
 var vertex_buffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geometry1.position), gl.STATIC_DRAW);
 gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
 var Index_Buffer = gl.createBuffer();
 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Index_Buffer);
-gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(geometry1.indices), gl.STATIC_DRAW);
 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 
 
 
-var vertices2 = [
-    -1.0, -1.0, 0.0,
-     1.0, -1.0, 0.0,
-     1.0,  1.0, 0.0,
-    -1.0,  1.0, 0.0
-];
-
-var coords2 = [
-    0.0, 0.0,
-    1.0, 0.0,
-    1.0, 1.0,
-    0.0, 1.0
-];
-
-const indices2 = [3,2,1,3,1,0];
+const geometry2 = await http.get('/models/panel.json','json')
 
 var vertex_buffer2 = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer2);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices2), gl.STATIC_DRAW);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geometry2.position), gl.STATIC_DRAW);
 gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
 var coords_buffer2 = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, coords_buffer2);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(coords2), gl.STATIC_DRAW);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geometry2.coord), gl.STATIC_DRAW);
 gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
 var Index_Buffer2 = gl.createBuffer();
 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Index_Buffer2);
-gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices2), gl.STATIC_DRAW);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(geometry2.indices), gl.STATIC_DRAW);
 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 
 
@@ -262,7 +242,7 @@ function animate(time){
 
     
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Index_Buffer);
-    gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+    gl.drawElements(gl.TRIANGLES, geometry1.indices.length, gl.UNSIGNED_SHORT, 0);
 
 
 
@@ -290,7 +270,7 @@ function animate(time){
     gl.enableVertexAttribArray(1);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Index_Buffer2);
-    gl.drawElements(gl.TRIANGLES, indices2.length, gl.UNSIGNED_SHORT, 0);
+    gl.drawElements(gl.TRIANGLES, geometry2.indices.length, gl.UNSIGNED_SHORT, 0);
 
     window.requestAnimationFrame(animate);
 }
