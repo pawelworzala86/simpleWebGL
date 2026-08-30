@@ -1,5 +1,5 @@
 import http from './http.js'
-
+import Shader from './webgl/shader.js'
 
 var canvas = document.getElementById('my_Canvas');
 const gl = canvas.getContext('webgl2');
@@ -61,7 +61,9 @@ gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 
 
 
-
+const defaultShader = await Shader.create(gl,'default')
+const panelShader = await Shader.create(gl,'panel')
+/*
 var vertCode = await http.get('/shaders/default.vert')
 var vertShader = gl.createShader(gl.VERTEX_SHADER);
 gl.shaderSource(vertShader, vertCode);
@@ -106,7 +108,7 @@ var shaderProgram2 = gl.createProgram();
 gl.attachShader(shaderProgram2, vertShader2);
 gl.attachShader(shaderProgram2, fragShader2);
 gl.linkProgram(shaderProgram2);
-
+*/
 
 
 
@@ -241,18 +243,18 @@ function animate(time){
     
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
 
-    gl.useProgram(shaderProgram);
+    gl.useProgram(defaultShader.program);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
 
-    var coord = gl.getAttribLocation(shaderProgram, "coordinates");
+    var coord = gl.getAttribLocation(defaultShader.program, "coordinates");
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(0);
 
 
-    var _Pmatrix = gl.getUniformLocation(shaderProgram, "Pmatrix");
-    var _Vmatrix = gl.getUniformLocation(shaderProgram, "Vmatrix");
-    var _Mmatrix = gl.getUniformLocation(shaderProgram, "Mmatrix");
+    var _Pmatrix = gl.getUniformLocation(defaultShader.program, "Pmatrix");
+    var _Vmatrix = gl.getUniformLocation(defaultShader.program, "Vmatrix");
+    var _Mmatrix = gl.getUniformLocation(defaultShader.program, "Mmatrix");
 
     gl.uniformMatrix4fv(_Pmatrix, false, proj_matrix);
     gl.uniformMatrix4fv(_Vmatrix, false, view_matrix);
@@ -271,19 +273,19 @@ function animate(time){
     //gl.clear(gl.COLOR_BUFFER_BIT);
     gl.viewport(0,0,canvas.width,canvas.height);
 
-    gl.useProgram(shaderProgram2);
+    gl.useProgram(panelShader.program);
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, depthTex);
-    gl.uniform1i(gl.getUniformLocation(shaderProgram2, "tex"), 0);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.uniform1i(gl.getUniformLocation(panelShader.program, "tex"), 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer2);
-    var coord2 = gl.getAttribLocation(shaderProgram2, "coordinates");
+    var coord2 = gl.getAttribLocation(panelShader.program, "coordinates");
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, coords_buffer2);
-    var coords2 = gl.getAttribLocation(shaderProgram2, "coord");
+    var coords2 = gl.getAttribLocation(panelShader.program, "coord");
     gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(1);
 
