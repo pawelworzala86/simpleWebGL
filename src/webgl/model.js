@@ -36,7 +36,7 @@ export class Model{
 
         return model
     }
-    render(proj_matrix,view_matrix,mo_matrix,tex){
+    render(proj_matrix,view_matrix,mo_matrix,tex,frame){
         const { gl,shader } = this
 
         gl.useProgram(shader.program);
@@ -64,6 +64,11 @@ export class Model{
         if(_Pmatrix) gl.uniformMatrix4fv(_Pmatrix, false, proj_matrix);
         if(_Vmatrix) gl.uniformMatrix4fv(_Vmatrix, false, view_matrix);
         if(_Mmatrix) gl.uniformMatrix4fv(_Mmatrix, false, mo_matrix);
+
+        var _frame = gl.getUniformLocation(shader.program, "frame")
+        if(_frame){
+            gl.uniform1i(_frame, frame)
+        }
 
         
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffer.index);

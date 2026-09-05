@@ -127,9 +127,10 @@ view_matrix[14] = view_matrix[14]-6;
 
 
 
-
+let frame = 0
 
 function animate(time){
+    frame++
 
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
@@ -141,7 +142,7 @@ function animate(time){
     
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
 
-    boxModel.render(proj_matrix,view_matrix,mo_matrix,tex)
+    boxModel.render(proj_matrix,view_matrix,mo_matrix,tex,frame)
 
 
 
@@ -152,7 +153,7 @@ function animate(time){
     //gl.clear(gl.COLOR_BUFFER_BIT);
     gl.viewport(0,0,canvas.width,canvas.height);
 
-    panelModel.render(proj_matrix,view_matrix,mo_matrix,tex)
+    panelModel.render(proj_matrix,view_matrix,mo_matrix,tex,frame)
 
     window.requestAnimationFrame(animate);
 }
