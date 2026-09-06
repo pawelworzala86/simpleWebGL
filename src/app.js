@@ -1,5 +1,5 @@
 import Model from './webgl/model.js'
-import Texture from './webgl/texture.js'
+import RenderBuffer from './webgl/renderBuffer.js'
 
 const { mat4 } = glMatrix
 
@@ -16,45 +16,7 @@ const panelModel = await Model.create(gl,'panel.json','panel')
 
 
 
-
-const tex = Texture.createBufferTexture(gl,canvas.width,canvas.height)
-const depthTex = Texture.createDepthTexture(gl,canvas.width,canvas.height)
-
-
-
-/*const rbo = gl.createRenderbuffer();
-gl.bindRenderbuffer(gl.RENDERBUFFER, rbo);
-gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, canvas.width, canvas.height);
-*/
-const fbo = gl.createFramebuffer();
-gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-
-gl.framebufferTexture2D(
-    gl.FRAMEBUFFER,
-    gl.COLOR_ATTACHMENT0,
-    gl.TEXTURE_2D,
-    tex,
-    0
-);
-
-gl.framebufferTexture2D(
-    gl.FRAMEBUFFER,
-    gl.DEPTH_ATTACHMENT,
-    gl.TEXTURE_2D,
-    depthTex,
-    0
-);
-
-/*gl.framebufferRenderbuffer(
-    gl.FRAMEBUFFER,
-    gl.DEPTH_ATTACHMENT,
-    gl.RENDERBUFFER,
-    rbo
-);*/
-
-if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
-    console.error("FBO incomplete");
-}
+const renderBuffer = new RenderBuffer(gl,canvas.width,canvas.height)
 
 
 
@@ -89,7 +51,7 @@ function animate(time){
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.viewport(0,0,canvas.width,canvas.height);
     
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, renderBuffer.fbo);
 
     const uniforms = {
         projection: projection,
@@ -110,7 +72,7 @@ function animate(time){
     gl.viewport(0,0,canvas.width,canvas.height);
 
     panelModel.render({
-        tex: tex,
+        tex: renderBuffer.tex,
         frame: frame,
     })
 
