@@ -26,22 +26,12 @@ export class Mesh extends Scene{
             mesh.buffer[key] = buffer
         }
 
-        return mesh
-    }
-    render(parentUniforms,modelMatrix=mat4.create()){
-        const { gl,shader } = this
+        mesh.vao = gl.createVertexArray()
+        gl.bindVertexArray(mesh.vao)
 
-        gl.useProgram(shader.program);
-
-        if(parentUniforms.tex){
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, parentUniforms.tex);
-            gl.uniform1i(gl.getUniformLocation(shader.program, "tex"), 0);
-        }
-
-        for(const key of Object.keys(this.buffer)){
+        for(const key of Object.keys(mesh.buffer)){
             if(key==="indices") continue
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffer[key]);
             var attrib = gl.getAttribLocation(shader.program, key);
             if(attrib>-1){
                 let length = 3
@@ -51,6 +41,16 @@ export class Mesh extends Scene{
             }
         }
 
+        gl.bindVertexArray(null)
+
+        return mesh
+    }
+    render(parentUniforms,modelMatrix=mat4.create()){
+        const { gl,shader } = this
+
+        gl.useProgram(shader.program)
+
+
         const matrix = mat4.create();
         mat4.multiply(matrix, modelMatrix, this.model)
 
@@ -58,7 +58,9 @@ export class Mesh extends Scene{
             model: matrix,
         })
         Uniform.set(gl,shader,uniforms)
-        
+
+
+        gl.bindVertexArray(this.vao)
         
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffer.indices);
         gl.drawElements(gl.TRIANGLES, this.geometry.indices.length, gl.UNSIGNED_SHORT, 0);
