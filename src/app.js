@@ -1,4 +1,4 @@
-import Model from './webgl/model/model.js'
+import ModelGLTF from './webgl/model/modelGLTF.js'
 import PanelModel from './webgl/model/panelModel.js'
 import RenderBuffer from './webgl/renderBuffer.js'
 
@@ -10,7 +10,8 @@ var canvas = document.getElementById('my_Canvas')
 const gl = canvas.getContext('webgl2')
 
 
-const boxModel = await Model.create(gl,'box.json','default')
+const boxModel = await ModelGLTF.create(gl,'box','default')
+
 const panelModel = await PanelModel.create(gl,[-1.0, -1.0, 1.0, 1.0],'panel')
 
 

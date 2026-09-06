@@ -36,6 +36,8 @@ export class Mesh extends Scene{
             if(attrib>-1){
                 let length = 3
                 if(key==="coord") length = 2
+                if(key==="texcoord_0") length = 2
+                if(key==="tangent") length = 4
                 gl.vertexAttribPointer(attrib, length, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(attrib);
             }
