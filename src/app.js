@@ -1,4 +1,5 @@
 import Model from './webgl/model.js'
+import PanelModel from './webgl/panelModel.js'
 import RenderBuffer from './webgl/renderBuffer.js'
 
 const { mat4 } = glMatrix
@@ -10,7 +11,7 @@ const gl = canvas.getContext('webgl2')
 
 
 const boxModel = await Model.create(gl,'box.json','default')
-const panelModel = await Model.create(gl,'panel.json','panel')
+const panelModel = await PanelModel.create(gl,[-1.0, -1.0, 1.0, 1.0],'panel')
 
 
 
@@ -65,7 +66,6 @@ function animate(time){
         const uniforms = {
             projection: projection,
             camera: camera,
-            //model: model,
             frame: frame,
         }
 
