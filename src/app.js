@@ -1,5 +1,5 @@
-import Model from './webgl/model.js'
-import PanelModel from './webgl/panelModel.js'
+import Model from './webgl/model/model.js'
+import PanelModel from './webgl/model/panelModel.js'
 import RenderBuffer from './webgl/renderBuffer.js'
 
 const { mat4 } = glMatrix
