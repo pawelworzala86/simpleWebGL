@@ -1,11 +1,11 @@
 #version 300 es
 
-layout(location = 0) in vec3 coordinates;
+layout(location = 0) in vec3 position;
 
-uniform mat4 Pmatrix;
-uniform mat4 Vmatrix;
-uniform mat4 Mmatrix;
+uniform mat4 projection;
+uniform mat4 camera;
+uniform mat4 model;
 
 void main(void) {
-    gl_Position = Pmatrix*Vmatrix*Mmatrix*vec4(coordinates, 1.0);
+    gl_Position = projection*camera*model*vec4(position, 1.0);
 }

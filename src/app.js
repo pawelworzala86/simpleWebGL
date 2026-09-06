@@ -112,11 +112,11 @@ return [
     ];
 }
 
-var proj_matrix = get_projection(40, canvas.width/canvas.height, 1, 100);
-var mo_matrix = [ 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 ];
-var view_matrix = [ 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 ];
+var projection = get_projection(40, canvas.width/canvas.height, 1, 100);
+var camera = [ 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 ];
+var model = [ 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 ];
 
-view_matrix[14] = view_matrix[14]-6;
+camera[14] = camera[14]-6;
 
 
 
@@ -142,7 +142,7 @@ function animate(time){
     
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
 
-    boxModel.render(proj_matrix,view_matrix,mo_matrix,tex,frame)
+    boxModel.render(projection,camera,model,tex,frame)
 
 
 
@@ -153,7 +153,7 @@ function animate(time){
     //gl.clear(gl.COLOR_BUFFER_BIT);
     gl.viewport(0,0,canvas.width,canvas.height);
 
-    panelModel.render(proj_matrix,view_matrix,mo_matrix,tex,frame)
+    panelModel.render(projection,camera,model,tex,frame)
 
     window.requestAnimationFrame(animate);
 }

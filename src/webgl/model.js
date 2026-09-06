@@ -20,7 +20,7 @@ export class Model{
         gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geometry.position), gl.STATIC_DRAW);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        model.buffer.vertex = vertex_buffer
+        model.buffer.position = vertex_buffer
 
         var coords_buffer2 = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, coords_buffer2);
@@ -36,7 +36,7 @@ export class Model{
 
         return model
     }
-    render(proj_matrix,view_matrix,mo_matrix,tex,frame){
+    render(projection,camera,model,tex,frame){
         const { gl,shader } = this
 
         gl.useProgram(shader.program);
@@ -45,25 +45,25 @@ export class Model{
         gl.bindTexture(gl.TEXTURE_2D, tex);
         gl.uniform1i(gl.getUniformLocation(shader.program, "tex"), 0);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.vertex);
-        var coord = gl.getAttribLocation(shader.program, "coordinates");
-        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.position);
+        var position = gl.getAttribLocation(shader.program, "position");
+        gl.vertexAttribPointer(position, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(position);
 
         if(this.buffer.coord){
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.coord);
-            var coords2 = gl.getAttribLocation(shader.program, "coord");
-            gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(1);
+            var coord = gl.getAttribLocation(shader.program, "coord");
+            gl.vertexAttribPointer(coord, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(coord);
         }
 
-        var _Pmatrix = gl.getUniformLocation(shader.program, "Pmatrix");
-        var _Vmatrix = gl.getUniformLocation(shader.program, "Vmatrix");
-        var _Mmatrix = gl.getUniformLocation(shader.program, "Mmatrix");
+        var _projection = gl.getUniformLocation(shader.program, "projection");
+        var _camera = gl.getUniformLocation(shader.program, "camera");
+        var _model = gl.getUniformLocation(shader.program, "model");
 
-        if(_Pmatrix) gl.uniformMatrix4fv(_Pmatrix, false, proj_matrix);
-        if(_Vmatrix) gl.uniformMatrix4fv(_Vmatrix, false, view_matrix);
-        if(_Mmatrix) gl.uniformMatrix4fv(_Mmatrix, false, mo_matrix);
+        if(_projection) gl.uniformMatrix4fv(_projection, false, projection);
+        if(_camera) gl.uniformMatrix4fv(_camera, false, camera);
+        if(_model) gl.uniformMatrix4fv(_model, false, model);
 
         var _frame = gl.getUniformLocation(shader.program, "frame")
         if(_frame){
