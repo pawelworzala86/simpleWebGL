@@ -1,6 +1,9 @@
-import http from './http.js'
-import Shader from './webgl/shader.js'
 import Model from './webgl/model.js'
+
+
+const { mat4 } = glMatrix
+
+
 
 var canvas = document.getElementById('my_Canvas')
 const gl = canvas.getContext('webgl2')
@@ -96,11 +99,14 @@ if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
 
 
 
+/*
+function deg2rad(degrees) {
+    if (typeof degrees !== 'number' || isNaN(degrees)) {
+        throw new TypeError('Argument musi być liczbą.');
+    }
+    return degrees * (Math.PI / 180);
+}
 
-
-
-
-/*==================== MATRIX ====================== */
 
 function get_projection(angle, a, zMin, zMax) {
 var ang = Math.tan((angle*.5)*Math.PI/180);//angle*.5
@@ -112,11 +118,16 @@ return [
     ];
 }
 
-var projection = get_projection(40, canvas.width/canvas.height, 1, 100);
-var camera = [ 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 ];
-//var model = [ 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 ];
+var projection2 = get_projection(40, canvas.width/canvas.height, 1, 100);
+*/
+let projection = mat4.create();
+mat4.perspectiveNO(projection, 45, canvas.width/canvas.height, 1, 100);
+//projection = [...projection]
 
-camera[14] = camera[14]-6;
+let camera = mat4.create();
+//var camera = [ 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 ];
+mat4.translate(camera, camera, [0, 0, -6]);
+//camera[14] = camera[14]-6;
 
 
 

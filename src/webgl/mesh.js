@@ -1,10 +1,12 @@
 import Uniform from './uniform.js'
 
+const { mat4 } = glMatrix
+
 export class Mesh{
     constructor(gl){
         this.gl = gl
         this.uniform = new Uniform(gl)
-        this.model = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]
+        this.model = mat4.create()
     }
     static async create(gl,shader,geometry){
         const mesh = new Mesh(gl)
@@ -25,27 +27,8 @@ export class Mesh{
             const buffer = gl.createBuffer();
             gl.bindBuffer(type, buffer);
             gl.bufferData(type, array, gl.STATIC_DRAW);
-            //gl.bindBuffer(type, null);
             mesh.buffer[key] = buffer
         }
-        
-        /*var vertex_buffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geometry.position), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        mesh.buffer.position = vertex_buffer
-
-        var coords_buffer2 = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, coords_buffer2);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geometry.coord), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        mesh.buffer.coord = coords_buffer2
-        
-        var Index_Buffer = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Index_Buffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(geometry.indices), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-        mesh.buffer.indices = Index_Buffer*/
 
         return mesh
     }
@@ -71,38 +54,11 @@ export class Mesh{
                 gl.enableVertexAttribArray(attrib);
             }
         }
-        /*gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.position);
-        var position = gl.getAttribLocation(shader.program, "position");
-        gl.vertexAttribPointer(position, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(position);
-
-        if(this.buffer.coord){
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.coord);
-            var coord = gl.getAttribLocation(shader.program, "coord");
-            if(coord>-1){
-                gl.vertexAttribPointer(coord, 2, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(coord);
-            }
-        }*/
-
-        /*var _projection = gl.getUniformLocation(shader.program, "projection");
-        var _camera = gl.getUniformLocation(shader.program, "camera");
-        var _model = gl.getUniformLocation(shader.program, "model");
-
-        if(_projection) gl.uniformMatrix4fv(_projection, false, projection);
-        if(_camera) gl.uniformMatrix4fv(_camera, false, camera);
-        if(_model) gl.uniformMatrix4fv(_model, false, model);*/
-
 
         const uniforms = Object.assign(parentUniforms,{
             model: this.model,
         })
-        this.uniform.set(shader,parentUniforms)
-
-        /*var _frame = gl.getUniformLocation(shader.program, "frame")
-        if(_frame){
-            gl.uniform1i(_frame, frame)
-        }*/
+        this.uniform.set(shader,uniforms)
 
         
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffer.indices);
