@@ -21,11 +21,11 @@ export class Model{
 
         return model
     }
-    render(projection,camera,model,tex,frame){
+    render(uniforms){
         const { gl,shader } = this
 
         for(const mesh of this.meshes){
-            mesh.render(projection,camera,model,tex,frame)
+            mesh.render(uniforms)
         }
     }
 }

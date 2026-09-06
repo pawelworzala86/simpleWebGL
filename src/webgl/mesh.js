@@ -4,6 +4,7 @@ export class Mesh{
     constructor(gl){
         this.gl = gl
         this.uniform = new Uniform(gl)
+        this.model = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]
     }
     static async create(gl,shader,geometry){
         const mesh = new Mesh(gl)
@@ -48,14 +49,16 @@ export class Mesh{
 
         return mesh
     }
-    render(projection,camera,model,tex,frame){
+    render(parentUniforms){
         const { gl,shader } = this
 
         gl.useProgram(shader.program);
 
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.uniform1i(gl.getUniformLocation(shader.program, "tex"), 0);
+        if(parentUniforms.tex){
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, parentUniforms.tex);
+            gl.uniform1i(gl.getUniformLocation(shader.program, "tex"), 0);
+        }
 
         for(const key of Object.keys(this.buffer)){
             if(key==="indices") continue
@@ -82,19 +85,19 @@ export class Mesh{
             }
         }*/
 
-        var _projection = gl.getUniformLocation(shader.program, "projection");
+        /*var _projection = gl.getUniformLocation(shader.program, "projection");
         var _camera = gl.getUniformLocation(shader.program, "camera");
         var _model = gl.getUniformLocation(shader.program, "model");
 
         if(_projection) gl.uniformMatrix4fv(_projection, false, projection);
         if(_camera) gl.uniformMatrix4fv(_camera, false, camera);
-        if(_model) gl.uniformMatrix4fv(_model, false, model);
+        if(_model) gl.uniformMatrix4fv(_model, false, model);*/
 
 
-        const uniforms = {
-            frame: frame,
-        }
-        this.uniform.set(shader,uniforms)
+        const uniforms = Object.assign(parentUniforms,{
+            model: this.model,
+        })
+        this.uniform.set(shader,parentUniforms)
 
         /*var _frame = gl.getUniformLocation(shader.program, "frame")
         if(_frame){

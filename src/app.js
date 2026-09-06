@@ -114,7 +114,7 @@ return [
 
 var projection = get_projection(40, canvas.width/canvas.height, 1, 100);
 var camera = [ 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 ];
-var model = [ 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 ];
+//var model = [ 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 ];
 
 camera[14] = camera[14]-6;
 
@@ -142,7 +142,14 @@ function animate(time){
     
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
 
-    boxModel.render(projection,camera,model,tex,frame)
+    const uniforms = {
+        projection: projection,
+        camera: camera,
+        //model: model,
+        frame: frame,
+    }
+
+    boxModel.render(uniforms)
 
 
 
@@ -153,7 +160,10 @@ function animate(time){
     //gl.clear(gl.COLOR_BUFFER_BIT);
     gl.viewport(0,0,canvas.width,canvas.height);
 
-    panelModel.render(projection,camera,model,tex,frame)
+    panelModel.render({
+        tex: tex,
+        frame: frame,
+    })
 
     window.requestAnimationFrame(animate);
 }
