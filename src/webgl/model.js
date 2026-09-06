@@ -1,12 +1,9 @@
 import http from './../http.js'
 import Shader from './shader.js'
 import Mesh from './mesh.js'
+import Scene from './scene.js'
 
-export class Model{
-    constructor(gl){
-        this.gl = gl
-        this.meshes = []
-    }
+export class Model extends Scene{
     static async create(gl,fileName,shaderName){
         const model = new Model(gl)
 
@@ -17,16 +14,9 @@ export class Model{
         model.geometry = geometry
 
         const mesh = await Mesh.create(gl,shader,geometry)
-        model.meshes.push(mesh)
+        model.childrens.push(mesh)
 
         return model
-    }
-    render(uniforms){
-        const { gl,shader } = this
-
-        for(const mesh of this.meshes){
-            mesh.render(uniforms)
-        }
     }
 }
 

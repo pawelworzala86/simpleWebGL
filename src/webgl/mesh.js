@@ -1,13 +1,9 @@
 import Uniform from './uniform.js'
+import Scene from './scene.js'
 
 const { mat4 } = glMatrix
 
-export class Mesh{
-    constructor(gl){
-        this.gl = gl
-        this.uniform = new Uniform(gl)
-        this.model = mat4.create()
-    }
+export class Mesh extends Scene{
     static async create(gl,shader,geometry){
         const mesh = new Mesh(gl)
         mesh.shader = shader
@@ -32,7 +28,7 @@ export class Mesh{
 
         return mesh
     }
-    render(parentUniforms){
+    render(parentUniforms,modelMatrix=mat4.create()){
         const { gl,shader } = this
 
         gl.useProgram(shader.program);
@@ -55,11 +51,14 @@ export class Mesh{
             }
         }
 
-        const uniforms = Object.assign(parentUniforms,{
-            model: this.model,
-        })
-        this.uniform.set(shader,uniforms)
+        const matrix = mat4.create();
+        mat4.multiply(matrix, modelMatrix, this.model)
 
+        const uniforms = Object.assign(parentUniforms,{
+            model: matrix,
+        })
+        Uniform.set(gl,shader,uniforms)
+        
         
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffer.indices);
         gl.drawElements(gl.TRIANGLES, this.geometry.indices.length, gl.UNSIGNED_SHORT, 0);
