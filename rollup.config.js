@@ -6,7 +6,7 @@ export default {
   input: 'src/app.js',
   output: {
     file: 'dist/bundle.min.js',
-    format: 'iife',
+    format: 'es',
     sourcemap: false
   },
   plugins: [

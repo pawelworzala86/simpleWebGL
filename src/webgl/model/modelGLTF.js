@@ -1,4 +1,3 @@
-import http from './../../http.js'
 import Shader from './../shader.js'
 import Mesh from './../mesh.js'
 import Scene from './../scene.js'
