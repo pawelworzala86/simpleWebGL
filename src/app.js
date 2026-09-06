@@ -35,7 +35,23 @@ mat4.translate(camera, camera, [0, 0, -6])
 
 
 
+function setScene(renderBuffer){
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
 
+    if(!renderBuffer){
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+    }
+
+    gl.clearColor(0.5, 0.5, 0.5, 0.9);
+    gl.enable(gl.DEPTH_TEST);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.viewport(0,0,canvas.width,canvas.height);
+    
+    if(renderBuffer){
+        gl.bindFramebuffer(gl.FRAMEBUFFER, renderBuffer.fbo)
+    }
+}
 
 
 let frame = 0
@@ -43,38 +59,28 @@ let frame = 0
 function animate(time){
     frame++
 
-    gl.enable(gl.DEPTH_TEST);
-    gl.depthFunc(gl.LEQUAL);
+    {
+        setScene(renderBuffer)
 
-    gl.clearColor(0.5, 0.5, 0.5, 0.9);
-    gl.enable(gl.DEPTH_TEST);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.viewport(0,0,canvas.width,canvas.height);
-    
-    gl.bindFramebuffer(gl.FRAMEBUFFER, renderBuffer.fbo);
+        const uniforms = {
+            projection: projection,
+            camera: camera,
+            //model: model,
+            frame: frame,
+        }
 
-    const uniforms = {
-        projection: projection,
-        camera: camera,
-        //model: model,
-        frame: frame,
+        boxModel.render(uniforms)
     }
 
-    boxModel.render(uniforms)
 
+    {
+        setScene(null)
 
-
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.clearColor(0.5, 0.5, 0.5, 0.9);
-    gl.enable(gl.DEPTH_TEST);
-    //gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.viewport(0,0,canvas.width,canvas.height);
-
-    panelModel.render({
-        tex: renderBuffer.tex,
-        frame: frame,
-    })
+        panelModel.render({
+            tex: renderBuffer.tex,
+            frame: frame,
+        })
+    }
 
     window.requestAnimationFrame(animate);
 }
