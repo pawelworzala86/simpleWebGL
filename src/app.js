@@ -1,5 +1,5 @@
 import Model from './webgl/model.js'
-
+import Texture from './webgl/texture.js'
 
 const { mat4 } = glMatrix
 
@@ -17,47 +17,8 @@ const panelModel = await Model.create(gl,'panel.json','panel')
 
 
 
-const tex = gl.createTexture();
-gl.bindTexture(gl.TEXTURE_2D, tex);
-gl.texImage2D(
-    gl.TEXTURE_2D,
-    0,
-    gl.RGBA,
-    canvas.width,
-    canvas.height,
-    0,
-    gl.RGBA,
-    gl.UNSIGNED_BYTE,
-    null
-);
-
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-
-
-
-const depthTex = gl.createTexture();
-gl.bindTexture(gl.TEXTURE_2D, depthTex);
-
-gl.texImage2D(
-    gl.TEXTURE_2D,
-    0,
-    gl.DEPTH_COMPONENT24,      // internal format
-    canvas.width,
-    canvas.height,
-    0,
-    gl.DEPTH_COMPONENT,        // format
-    gl.UNSIGNED_INT,           // type
-    null
-);
-
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+const tex = Texture.createBufferTexture(gl,canvas.width,canvas.height)
+const depthTex = Texture.createDepthTexture(gl,canvas.width,canvas.height)
 
 
 
@@ -99,35 +60,12 @@ if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
 
 
 
-/*
-function deg2rad(degrees) {
-    if (typeof degrees !== 'number' || isNaN(degrees)) {
-        throw new TypeError('Argument musi być liczbą.');
-    }
-    return degrees * (Math.PI / 180);
-}
 
-
-function get_projection(angle, a, zMin, zMax) {
-var ang = Math.tan((angle*.5)*Math.PI/180);//angle*.5
-return [
-    0.5/ang, 0 , 0, 0,
-    0, 0.5*a/ang, 0, 0,
-    0, 0, -(zMax+zMin)/(zMax-zMin), -1,
-    0, 0, (-2*zMax*zMin)/(zMax-zMin), 0 
-    ];
-}
-
-var projection2 = get_projection(40, canvas.width/canvas.height, 1, 100);
-*/
 let projection = mat4.create();
-mat4.perspectiveNO(projection, 45, canvas.width/canvas.height, 1, 100);
-//projection = [...projection]
+mat4.perspectiveNO(projection, 45, canvas.width/canvas.height, 1, 100)
 
 let camera = mat4.create();
-//var camera = [ 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 ];
-mat4.translate(camera, camera, [0, 0, -6]);
-//camera[14] = camera[14]-6;
+mat4.translate(camera, camera, [0, 0, -6])
 
 
 
