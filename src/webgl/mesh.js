@@ -1,6 +1,9 @@
+import Uniform from './uniform.js'
+
 export class Mesh{
     constructor(gl){
         this.gl = gl
+        this.uniform = new Uniform(gl)
     }
     static async create(gl,shader,geometry){
         const mesh = new Mesh(gl)
@@ -46,8 +49,10 @@ export class Mesh{
         if(this.buffer.coord){
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.coord);
             var coord = gl.getAttribLocation(shader.program, "coord");
-            gl.vertexAttribPointer(coord, 2, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(coord);
+            if(coord>-1){
+                gl.vertexAttribPointer(coord, 2, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(coord);
+            }
         }
 
         var _projection = gl.getUniformLocation(shader.program, "projection");
@@ -58,10 +63,16 @@ export class Mesh{
         if(_camera) gl.uniformMatrix4fv(_camera, false, camera);
         if(_model) gl.uniformMatrix4fv(_model, false, model);
 
-        var _frame = gl.getUniformLocation(shader.program, "frame")
+
+        const uniforms = {
+            frame: frame,
+        }
+        this.uniform.set(shader,uniforms)
+
+        /*var _frame = gl.getUniformLocation(shader.program, "frame")
         if(_frame){
             gl.uniform1i(_frame, frame)
-        }
+        }*/
 
         
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffer.index);
