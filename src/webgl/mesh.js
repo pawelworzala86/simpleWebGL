@@ -47,8 +47,10 @@ export class Mesh extends Scene{
 
         return mesh
     }
-    render(parentUniforms,modelMatrix=mat4.create()){
-        const { gl,shader } = this
+    render(parentUniforms,modelMatrix=mat4.create(),newShader=null){
+        const { gl } = this
+
+        const shader = newShader || this.shader
 
         gl.useProgram(shader.program)
 

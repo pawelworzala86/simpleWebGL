@@ -6,11 +6,11 @@ export class Scene{
         this.childrens = []
         this.model = mat4.create()
     }
-    render(uniforms,modelMatrix=mat4.create()){
+    render(uniforms,modelMatrix=mat4.create(),shader=null){
         for(const children of this.childrens){
             const matrix = mat4.create();
             mat4.multiply(matrix, modelMatrix, this.model)
-            children.render(uniforms,matrix)
+            children.render(uniforms,matrix,shader)
         }
     }
 }
