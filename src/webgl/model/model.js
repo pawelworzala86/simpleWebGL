@@ -10,7 +10,7 @@ export class Model extends Scene{
         const shader = await Shader.create(gl,shaderName)
         model.shader = shader
 
-        const geometry = await http.get('/models/'+fileName,'json')
+        const geometry = await http.get('/models/'+fileName+'.json','json')
         model.geometry = geometry
 
         const mesh = await Mesh.create(gl,shader,geometry)

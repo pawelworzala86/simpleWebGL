@@ -109,3 +109,5 @@ export class FPSCamera {
         vec3.normalize(this.up, this.up);
     }
 }
+
+export default FPSCamera
