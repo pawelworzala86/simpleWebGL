@@ -64,8 +64,12 @@ export class GLTFloader{
 
         gltf.materials = gltf.materials.map(material=>{
             const pbrMetallicRoughness = material.pbrMetallicRoughness
+            let texture = null
+            if(pbrMetallicRoughness.baseColorTexture && pbrMetallicRoughness.baseColorTexture.index !== undefined){
+               texture = gltf.images[pbrMetallicRoughness.baseColorTexture.index].uri
+            }
             return {
-                baseColorTexture: gltf.images[pbrMetallicRoughness.baseColorTexture.index].uri
+                baseColorTexture: texture
             }
         })
 

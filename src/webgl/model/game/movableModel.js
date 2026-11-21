@@ -27,7 +27,7 @@ export class MovableModel extends ModelGLTF{
     }
 
     static async create(gl){
-        const model = await super.create(gl,'box')
+        const model = await super.create(gl,'ship')
         model.scale = 0.15
         //const model = await MovableModel.create(gl,'box')
         //const model = await Geometry.createBox(gl,0.15,MovableModel)
