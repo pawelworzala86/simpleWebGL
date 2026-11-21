@@ -1,5 +1,5 @@
 import ModelGLTF from './webgl/model/modelGLTF.js'
-import Model from './webgl/model/model.js'
+import ModelJSON from './webgl/model/modelJSON.js'
 import PanelModel from './webgl/model/panelModel.js'
 import RenderBuffer from './webgl/renderBuffer.js'
 import FPSCamera from './webgl/camera/fps.js';
@@ -19,7 +19,7 @@ const gl = canvas.getContext('webgl2')
 
 
 //const boxModel = await ModelGLTF.create(gl,'box','default')
-const boxModel = await Model.create(gl,'box','default')
+const boxModel = await ModelJSON.create(gl,'box','default')
 
 const panelModel = await PanelModel.create(gl,[-1.0, -1.0, 1.0, 1.0],'panel')
 
@@ -135,6 +135,7 @@ function setScene(targetBuffer) {
 
 
 const intersect = new Intersect(canvas.width, canvas.height)
+intersect.mode = 'BBOX'
 intersect.addModel(boxModel)
 
 canvas.addEventListener('click', (event) => {

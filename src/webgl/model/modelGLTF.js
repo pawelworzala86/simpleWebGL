@@ -1,9 +1,9 @@
 import Shader from './../shader.js'
 import Mesh from './../mesh.js'
-import Scene from './../scene.js'
+import Model from './model.js'
 import GLTFloader from './loaders/gltf.js'
 
-export class ModelGLTF extends Scene{
+export class ModelGLTF extends Model{
     static async create(gl,fileName,shaderName){
         const model = new ModelGLTF(gl)
 
@@ -24,6 +24,8 @@ export class ModelGLTF extends Scene{
             model.childrens.push(mesh)
         }
 
+        model.calculateBBox()
+        
         return model
     }
 }

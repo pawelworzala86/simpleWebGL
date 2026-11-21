@@ -67,11 +67,40 @@ function getChildren(node) {
     return []
 }
 
+function getBoundingBoxGeometry(bbox) {
+    if (!bbox || !bbox.min || !bbox.max ||
+        bbox.min.length < 3 || bbox.max.length < 3 ||
+        !bbox.min.every(Number.isFinite) || !bbox.max.every(Number.isFinite) ||
+        bbox.min.some((value, index) => value > bbox.max[index])) {
+        throw new TypeError('BBOX mode requires a valid model bounding box')
+    }
+
+    const [minX, minY, minZ] = bbox.min
+    const [maxX, maxY, maxZ] = bbox.max
+    return {
+        position: [
+            minX, minY, minZ, maxX, minY, minZ,
+            maxX, maxY, minZ, minX, maxY, minZ,
+            minX, minY, maxZ, maxX, minY, maxZ,
+            maxX, maxY, maxZ, minX, maxY, maxZ
+        ],
+        indices: [
+            0, 1, 2, 0, 2, 3,
+            4, 5, 6, 4, 6, 7,
+            0, 3, 7, 0, 7, 4,
+            1, 2, 6, 1, 6, 5,
+            0, 1, 5, 0, 5, 4,
+            3, 2, 6, 3, 6, 7
+        ]
+    }
+}
+
 export class Intersect {
     constructor(width, height) {
         this.width = width
         this.height = height
         this.models = []
+        this.mode = 'MESH'
     }
 
     addModel(model) {
@@ -80,6 +109,10 @@ export class Intersect {
     }
 
     getIdAt(x, y, projection, viewMatrix) {
+        if (this.mode !== 'MESH' && this.mode !== 'BBOX') {
+            throw new RangeError(`Unsupported intersection mode: ${this.mode}`)
+        }
+
         if (!Number.isFinite(x) || !Number.isFinite(y) ||
             x < 0 || y < 0 || x >= this.width || y >= this.height) {
             return null
@@ -111,6 +144,20 @@ export class Intersect {
         let closestDistance = maxDistance
 
         const identity = mat4.create()
+        const testGeometry = (geometry, modelMatrix, owner) => {
+            const distance = intersectGeometry(
+                geometry,
+                modelMatrix,
+                origin,
+                direction,
+                closestDistance
+            )
+            if (distance !== null && distance < closestDistance) {
+                closestDistance = distance
+                closestModel = owner
+            }
+        }
+
         const intersectNode = (node, parentMatrix, owner) => {
             const modelMatrix = mat4.create()
             mat4.multiply(modelMatrix, parentMatrix, node.model || mat4.create())
@@ -124,21 +171,18 @@ export class Intersect {
             }
 
             if (!node.geometry || !node.geometry.position || !node.geometry.indices) return
-            const distance = intersectGeometry(
-                node.geometry,
-                modelMatrix,
-                origin,
-                direction,
-                closestDistance
-            )
-            if (distance !== null && distance < closestDistance) {
-                closestDistance = distance
-                closestModel = owner
-            }
+            testGeometry(node.geometry, modelMatrix, owner)
         }
 
         for (const model of this.models) {
-            intersectNode(model, identity, model)
+            if (this.mode === 'BBOX') {
+                const geometry = getBoundingBoxGeometry(model.bbox)
+                const modelMatrix = mat4.create()
+                mat4.multiply(modelMatrix, identity, model.model || identity)
+                testGeometry(geometry, modelMatrix, model)
+            } else {
+                intersectNode(model, identity, model)
+            }
         }
 
         return closestModel
