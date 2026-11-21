@@ -39,14 +39,12 @@ export class FPSCamera {
     // Obsługa ruchu z klawiszem (np. 'W', 'A', 'S', 'D')
     processKeyboard(direction, deltaTime) {
         let velocity = this.movementSpeed * deltaTime;
-        let horizontalFront = vec3.fromValues(this.front[0], 0, this.front[2]);
-        vec3.normalize(horizontalFront, horizontalFront);
 
         if (direction === 'FORWARD') {
-            vec3.scaleAndAdd(this.position, this.position, horizontalFront, velocity);
+            vec3.scaleAndAdd(this.position, this.position, this.front, velocity);
         }
         if (direction === 'BACKWARD') {
-            vec3.scaleAndAdd(this.position, this.position, horizontalFront, -velocity);
+            vec3.scaleAndAdd(this.position, this.position, this.front, -velocity);
         }
         if (direction === 'LEFT') {
             vec3.scaleAndAdd(this.position, this.position, this.right, -velocity);

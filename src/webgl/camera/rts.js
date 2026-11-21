@@ -1,3 +1,5 @@
+import FPSCamera from './fps.js'
+
 const { mat4, vec3 } = glMatrix
 
 function toRadian(a) {
@@ -5,7 +7,7 @@ function toRadian(a) {
 }
 
 export class RTSCamera {
-    constructor(position = [0, 10, 10], target = [0, 0, 0]) {
+    constructor(position = [0, 10, 10], target = [0, 0, 0], mode = 'RTS') {
         // Pozycja i cel (punkt na ziemi, wokół którego krąży kamera)
         this.position = vec3.fromValues(...position);
         this.target = vec3.fromValues(...target);
@@ -32,11 +34,47 @@ export class RTSCamera {
         this.mouseSensitivity = 0.15;
         this.zoomSensitivity = 0.001;
 
+        this._mode = 'RTS';
+        this.fpsCamera = new FPSCamera(position);
+        this.fpsCamera.yaw = this.yaw;
+        this.fpsCamera.pitch = this.pitch;
+        this.fpsCamera.updateCameraVectors();
+
         this.updateCameraVectors();
+        this.mode = mode;
+    }
+
+    get mode() {
+        return this._mode;
+    }
+
+    set mode(mode) {
+        if (mode !== 'RTS' && mode !== 'FPS') {
+            throw new RangeError(`Unsupported camera mode: ${mode}`);
+        }
+        if (mode === this._mode) return;
+
+        if (mode === 'FPS') {
+            vec3.copy(this.fpsCamera.position, this.position);
+            this.fpsCamera.yaw = this.yaw;
+            this.fpsCamera.pitch = this.pitch;
+            this.fpsCamera.updateCameraVectors();
+        } else {
+            vec3.copy(this.position, this.fpsCamera.position);
+            this.yaw = this.fpsCamera.yaw;
+            this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.fpsCamera.pitch));
+            this.updateCameraVectors();
+            vec3.scaleAndAdd(this.target, this.fpsCamera.position, this.front, this.distance);
+            this.updatePositionFromTarget();
+        }
+
+        this._mode = mode;
     }
 
     // Zwraca macierz widoku (View Matrix) dla WebGL
     getViewMatrix() {
+        if (this.mode === 'FPS') return this.fpsCamera.getViewMatrix();
+
         let view = mat4.create();
         mat4.lookAt(view, this.position, this.target, this.up);
         return view;
@@ -44,13 +82,14 @@ export class RTSCamera {
 
     // Poruszanie punktem target po płaszczyźnie XZ (WSAD)
     processKeyboard(direction, deltaTime) {
-        let velocity = this.movementSpeed * deltaTime;
+        if (this.mode === 'FPS') {
+            this.fpsCamera.processKeyboard(direction, deltaTime);
+            return;
+        }
 
-        // Kierunek przodu na płaszczyźnie XZ (ignoring Y)
+        let velocity = this.movementSpeed * deltaTime;
         let forwardXZ = vec3.fromValues(this.front[0], 0, this.front[2]);
         vec3.normalize(forwardXZ, forwardXZ);
-
-        // Kierunek w prawo na płaszczyźnie XZ
         let rightXZ = vec3.fromValues(this.right[0], 0, this.right[2]);
         vec3.normalize(rightXZ, rightXZ);
 
@@ -72,6 +111,11 @@ export class RTSCamera {
 
     // Obrót (orbitowanie) wokół punktu target (np. Prawym przyciskiem myszy)
     processMouseOrbit(xoffset, yoffset) {
+        if (this.mode === 'FPS') {
+            this.fpsCamera.processMouseMovement(xoffset, yoffset);
+            return;
+        }
+
         xoffset *= this.mouseSensitivity;
         yoffset *= this.mouseSensitivity;
 
@@ -87,6 +131,8 @@ export class RTSCamera {
 
     // Zooming (Scroll myszy)
     processMouseScroll(yoffset) {
+        if (this.mode === 'FPS') return;
+
         this.distance *= Math.exp(yoffset * this.zoomSensitivity);
         
         // Ograniczenia zooma

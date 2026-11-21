@@ -5,7 +5,6 @@ import StaticModel from './model/game/staticModel.js'
 import MovableModel from './model/game/movableModel.js'
 import Geometry from './geometry.js'
 import RenderBuffer from './renderBuffer.js'
-import FPSCamera from './camera/fps.js';
 import RTSCamera from './camera/rts.js';
 import Intersect from './intersect.js'
 import Controls from './controls.js';
@@ -29,7 +28,6 @@ class Engine {
         }
         this.models = [];
         this.cameras = [];
-        this.controls = new Controls(canvas);
     }
     async run(){
         const {gl, canvas} = this
@@ -79,7 +77,7 @@ class Engine {
 
 
 
-        const camera = new RTSCamera();
+        const camera = new RTSCamera([0, 10, 10], [0, 0, 0], 'RTS');
 
         const controls = new Controls(canvas, camera); 
 

@@ -7,6 +7,14 @@ export class Controls{
         this.keys = new Set();
         
         window.addEventListener('keydown', (e) => {
+            if (e.code === 'Tab') {
+                e.preventDefault();
+                if (!e.repeat) {
+                    this.camera.mode = this.camera.mode === 'RTS' ? 'FPS' : 'RTS';
+                }
+                return;
+            }
+
             if (this.movementKeys.has(e.code)) {
                 e.preventDefault();
                 this.keys.add(e.code);
