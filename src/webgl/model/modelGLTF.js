@@ -6,7 +6,7 @@ import Texture from './../texture.js'
 
 export class ModelGLTF extends Model{
     static async create(gl,fileName){
-        const model = new ModelGLTF(gl)
+        const model = new this(gl)
 
         const gltf = await GLTFloader.load(gl,fileName+'/scene.gltf')
 

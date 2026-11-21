@@ -7,16 +7,36 @@ export class Model extends Scene{
     constructor(gl){
         super(gl)
         this.position = vec3.create()
+        this._scale = 1
         this.material = new DefaultMaterial(gl)
+        this._defaultMaterial = this.material
     }
 
-    render(uniforms, modelMatrix = mat4.create()){
+    get scale(){
+        return this._scale
+    }
+
+    set scale(value){
+        if (!Number.isFinite(value)) {
+            throw new TypeError('Model scale must be a finite number')
+        }
+
+        this._scale = value
+        if (this.bbox !== undefined) this.calculateBBox()
+    }
+
+    render(uniforms, modelMatrix = mat4.create(), material = null){
         const translation = mat4.create()
         mat4.fromTranslation(translation, this.position)
 
         const positionedMatrix = mat4.create()
         mat4.multiply(positionedMatrix, modelMatrix, translation)
-        super.render(uniforms, positionedMatrix)
+        const scaling = mat4.create()
+        mat4.fromScaling(scaling, [this.scale, this.scale, this.scale])
+        mat4.multiply(positionedMatrix, positionedMatrix, scaling)
+        const inheritedMaterial = material ||
+            (this.material !== this._defaultMaterial ? this.material : null)
+        super.render(uniforms, positionedMatrix, inheritedMaterial)
     }
 
     calculateBBox(){
@@ -43,7 +63,10 @@ export class Model extends Scene{
 
         const visit = (node, parentTransform, isRoot = false) => {
             const transform = mat4.create()
-            mat4.multiply(transform, parentTransform, isRoot ? mat4.create() : node.model || mat4.create())
+            const nodeTransform = isRoot
+                ? mat4.fromScaling(mat4.create(), [this.scale, this.scale, this.scale])
+                : node.model || mat4.create()
+            mat4.multiply(transform, parentTransform, nodeTransform)
             const children = node.childrens && node.childrens.length
                 ? node.childrens
                 : node.mesh && node.mesh.length

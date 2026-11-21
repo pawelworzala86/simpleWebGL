@@ -1,12 +1,12 @@
-import Geometry from './../../../webgl/geometry.js'
+import ModelGLTF from './../../../webgl/model/modelGLTF.js'
 import Model from './../model.js'
 import Mesh from './../../mesh.js'
 
 const { mat4, vec3 } = glMatrix
 
-export class MovableModel extends Model{
+export class MovableModel extends ModelGLTF{
     constructor(gl){
-        super(gl)
+        super(gl,'box')
         this.path = []
         this.pathIndex = 0
         this.speed = 5
@@ -22,7 +22,10 @@ export class MovableModel extends Model{
     }
 
     static async create(gl){
-        const model = await Geometry.createBox(gl,0.15,MovableModel)
+        const model = await super.create(gl,'box')
+        model.scale = 0.15
+        //const model = await MovableModel.create(gl,'box')
+        //const model = await Geometry.createBox(gl,0.15,MovableModel)
         if (model.bbox) {
             const halfWidth = (model.bbox.max[0] - model.bbox.min[0]) / 2
             const halfDepth = Math.max(
