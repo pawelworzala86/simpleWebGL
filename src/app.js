@@ -1,6 +1,7 @@
 import ModelGLTF from './webgl/model/modelGLTF.js'
 import ModelJSON from './webgl/model/modelJSON.js'
 import PanelModel from './webgl/model/panelModel.js'
+import Geometry from './webgl/geometry.js'
 import RenderBuffer from './webgl/renderBuffer.js'
 import FPSCamera from './webgl/camera/fps.js';
 import RTSCamera from './webgl/camera/rts.js';
@@ -26,6 +27,12 @@ const panelModel = await PanelModel.create(gl,[-1.0, -1.0, 1.0, 1.0],'panel')
 
 
 
+const ground = await Geometry.createGround(gl,10)
+
+
+const models = []
+models.push(boxModel)
+models.push(ground)
 
 
 
@@ -127,7 +134,9 @@ function animate(time){
             frame: frame,
         }
 
-        boxModel.render(uniforms)
+        for(const model of models){
+            model.render(uniforms)
+        }
     }
 
     {
