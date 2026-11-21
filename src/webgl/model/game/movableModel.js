@@ -12,6 +12,10 @@ export class MovableModel extends ModelGLTF{
         this.speed = 5
         this.collisionRadius = 0.22
         this.rotationY = 0
+        this.pitch = 0
+        this.roll = 0
+        this.targetRoll = 0
+        this.flightVelocity = vec3.create()
         this.turnSpeed = Math.PI * 2
         this.shuttlePaths = null
         this.shuttleLegIndex = 0
@@ -19,6 +23,7 @@ export class MovableModel extends ModelGLTF{
         this.isGathering = false
         this.gatheredResources = null
         this.gatherRequestId = 0
+        this.isPlayerControlled = false
     }
 
     static async create(gl){
@@ -99,6 +104,77 @@ export class MovableModel extends ModelGLTF{
         return resources
     }
 
+    setPlayerControlled(controlled){
+        this.isPlayerControlled = controlled
+        if (controlled) this.setPath([])
+    }
+
+    movePlayer(forward, deltaTime){
+        this.updatePlayerFlight({ forward }, deltaTime)
+    }
+
+    getFlightBasis(){
+        const sinYaw = Math.sin(this.rotationY)
+        const cosYaw = Math.cos(this.rotationY)
+        const sinPitch = Math.sin(this.pitch)
+        const cosPitch = Math.cos(this.pitch)
+        return {
+            forward: [sinYaw * cosPitch, sinPitch, cosYaw * cosPitch],
+            right: [cosYaw, 0, -sinYaw],
+            up: [-sinYaw * sinPitch, cosPitch, -cosYaw * sinPitch],
+        }
+    }
+
+    updatePlayerFlight(input, deltaTime){
+        const basis = this.getFlightBasis()
+        const direction = vec3.create()
+        vec3.scaleAndAdd(direction, direction, basis.forward, input.forward || 0)
+        vec3.scaleAndAdd(direction, direction, basis.right, input.strafe || 0)
+        vec3.scaleAndAdd(direction, direction, basis.up, input.lift || 0)
+        const hasInput = vec3.squaredLength(direction) > 0
+        if (hasInput) {
+            vec3.normalize(direction, direction)
+            const acceleration = this.speed * (input.boost ? 3 : 2)
+            vec3.scaleAndAdd(this.flightVelocity, this.flightVelocity, direction, acceleration * deltaTime)
+        }
+
+        const drag = Math.exp(-(hasInput ? 0.18 : 0.65) * deltaTime)
+        vec3.scale(this.flightVelocity, this.flightVelocity, drag)
+        const maxSpeed = this.speed * (input.boost ? 2 : 1)
+        const currentSpeed = vec3.length(this.flightVelocity)
+        if (currentSpeed > maxSpeed) {
+            vec3.scale(this.flightVelocity, this.flightVelocity, maxSpeed / currentSpeed)
+        }
+        vec3.scaleAndAdd(this.position, this.position, this.flightVelocity, deltaTime)
+
+        this.targetRoll *= Math.exp(-4 * deltaTime)
+        const rollSmoothing = 1 - Math.exp(-5 * deltaTime)
+        this.roll += (this.targetRoll - this.roll) * rollSmoothing
+        this.updatePlayerRotation()
+    }
+
+    turnPlayer(mouseDeltaX, mouseDeltaY){
+        const sensitivity = 0.0025
+        this.rotationY += mouseDeltaX * sensitivity
+        this.pitch = Math.max(
+            -1.25,
+            Math.min(1.25, this.pitch - mouseDeltaY * sensitivity)
+        )
+        this.targetRoll = Math.max(-0.45, Math.min(0.45, -mouseDeltaX * 0.002))
+        this.updatePlayerRotation()
+    }
+
+    updatePlayerRotation(){
+        const yawRotation = mat4.create()
+        const pitchRotation = mat4.create()
+        const rollRotation = mat4.create()
+        mat4.fromYRotation(yawRotation, this.rotationY)
+        mat4.fromXRotation(pitchRotation, -this.pitch)
+        mat4.fromZRotation(rollRotation, this.roll)
+        mat4.multiply(this.model, yawRotation, pitchRotation)
+        mat4.multiply(this.model, this.model, rollRotation)
+    }
+
     getMovementState(index){
         const position = Array.from(this.position)
         const velocity = [0, 0]
@@ -127,6 +203,7 @@ export class MovableModel extends ModelGLTF{
     }
 
     getMovementPlan(deltaTime, states, state){
+        if (this.isPlayerControlled) return null
         if (this.isGathering) return null
         if (this.pathIndex >= this.path.length || deltaTime <= 0) return null
 

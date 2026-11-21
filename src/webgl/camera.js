@@ -32,6 +32,10 @@ export class Camera {
         this.mouseSensitivity = 0.15;
         this.fpsMouseSensitivity = 0.1;
         this.zoomSensitivity = 0.001;
+        this.followTarget = null;
+        this.followDistance = 5;
+        this.followHeight = 1.2;
+        this.followSmoothing = 8;
 
         this._mode = 'RTS';
         this.updateCameraVectors();
@@ -49,6 +53,7 @@ export class Camera {
         if (mode === this._mode) return;
 
         if (mode === 'RTS') {
+            this.followTarget = null;
             this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
             this.updateCameraVectors();
             vec3.scaleAndAdd(this.target, this.position, this.front, this.distance);
@@ -60,6 +65,11 @@ export class Camera {
         this._mode = 'FPS';
     }
 
+    follow(model) {
+        this.followTarget = model;
+        this._mode = 'TPP';
+    }
+
     // Zwraca macierz widoku (View Matrix) dla WebGL
     getViewMatrix() {
         let view = mat4.create();
@@ -68,9 +78,32 @@ export class Camera {
             vec3.add(target, this.position, this.front);
             mat4.lookAt(view, this.position, target, this.up);
         } else {
-            mat4.lookAt(view, this.position, this.target, this.up);
+            mat4.lookAt(view, this.position, this.target, this.worldUp);
         }
         return view;
+    }
+
+    updateFollow(deltaTime) {
+        if (this.mode !== 'TPP' || !this.followTarget) return;
+
+        const model = this.followTarget;
+        const basis = model.getFlightBasis()
+        const desiredPosition = vec3.fromValues(
+            model.position[0] - basis.forward[0] * this.followDistance +
+                basis.up[0] * this.followHeight,
+            model.position[1] - basis.forward[1] * this.followDistance +
+                basis.up[1] * this.followHeight,
+            model.position[2] - basis.forward[2] * this.followDistance +
+                basis.up[2] * this.followHeight
+        );
+        const desiredTarget = vec3.fromValues(
+            model.position[0] + basis.forward[0] * 2,
+            model.position[1] + basis.forward[1] * 2 + 0.4,
+            model.position[2] + basis.forward[2] * 2
+        );
+        const smoothing = 1 - Math.exp(-this.followSmoothing * deltaTime);
+        vec3.lerp(this.position, this.position, desiredPosition, smoothing);
+        vec3.lerp(this.target, this.target, desiredTarget, smoothing);
     }
 
     // Poruszanie punktem target po płaszczyźnie XZ (WSAD)
@@ -134,6 +167,13 @@ export class Camera {
 
     // Zooming (Scroll myszy)
     processMouseScroll(yoffset) {
+        if (this.mode === 'TPP') {
+            this.followDistance = Math.max(
+                2.5,
+                Math.min(12, this.followDistance * Math.exp(yoffset * this.zoomSensitivity))
+            )
+            return
+        }
         if (this.mode === 'FPS') return;
 
         this.distance *= Math.exp(yoffset * this.zoomSensitivity);

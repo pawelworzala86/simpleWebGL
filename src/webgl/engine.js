@@ -80,7 +80,6 @@ class Engine {
         mat4.perspectiveNO(projection, 45, canvas.width / canvas.height, 1, 100)
 
         const camera = new Camera([0, 10, 10], [0, 0, 0], 'RTS')
-        const controls = new Controls(canvas, camera)
 
         function setScene(targetBuffer) {
             if (targetBuffer) {
@@ -110,6 +109,7 @@ class Engine {
             projection,
             camera,
         })
+        const controls = new Controls(canvas, camera, selection.getSelectedModels)
 
         installCommands({
             canvas,
@@ -135,6 +135,7 @@ class Engine {
 
             controls.processInput(deltaTime)
             updateMovements(models, deltaTime, centerModel, rootStats)
+            camera.updateFollow(deltaTime)
 
             const viewMatrix = camera.getViewMatrix()
 
