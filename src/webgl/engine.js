@@ -5,7 +5,7 @@ import StaticModel from './model/game/staticModel.js'
 import MovableModel from './model/game/movableModel.js'
 import Geometry from './geometry.js'
 import RenderBuffer from './renderBuffer.js'
-import RTSCamera from './camera/rts.js';
+import Camera from './camera.js';
 import Intersect from './intersect.js'
 import Controls from './controls.js';
 import PathFinding from './pathFinding.js'
@@ -77,7 +77,7 @@ class Engine {
 
 
 
-        const camera = new RTSCamera([0, 10, 10], [0, 0, 0], 'RTS');
+        const camera = new Camera([0, 10, 10], [0, 0, 0], 'RTS');
 
         const controls = new Controls(canvas, camera); 
 

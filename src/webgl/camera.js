@@ -1,12 +1,10 @@
-import FPSCamera from './fps.js'
-
 const { mat4, vec3 } = glMatrix
 
 function toRadian(a) {
     return a * Math.PI / 180;
 }
 
-export class RTSCamera {
+export class Camera {
     constructor(position = [0, 10, 10], target = [0, 0, 0], mode = 'RTS') {
         // Pozycja i cel (punkt na ziemi, wokół którego krąży kamera)
         this.position = vec3.fromValues(...position);
@@ -32,14 +30,10 @@ export class RTSCamera {
         // Parametry prędkości i czułości
         this.movementSpeed = 12.0;
         this.mouseSensitivity = 0.15;
+        this.fpsMouseSensitivity = 0.1;
         this.zoomSensitivity = 0.001;
 
         this._mode = 'RTS';
-        this.fpsCamera = new FPSCamera(position);
-        this.fpsCamera.yaw = this.yaw;
-        this.fpsCamera.pitch = this.pitch;
-        this.fpsCamera.updateCameraVectors();
-
         this.updateCameraVectors();
         this.mode = mode;
     }
@@ -54,36 +48,47 @@ export class RTSCamera {
         }
         if (mode === this._mode) return;
 
-        if (mode === 'FPS') {
-            vec3.copy(this.fpsCamera.position, this.position);
-            this.fpsCamera.yaw = this.yaw;
-            this.fpsCamera.pitch = this.pitch;
-            this.fpsCamera.updateCameraVectors();
-        } else {
-            vec3.copy(this.position, this.fpsCamera.position);
-            this.yaw = this.fpsCamera.yaw;
-            this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.fpsCamera.pitch));
+        if (mode === 'RTS') {
+            this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
             this.updateCameraVectors();
-            vec3.scaleAndAdd(this.target, this.fpsCamera.position, this.front, this.distance);
+            vec3.scaleAndAdd(this.target, this.position, this.front, this.distance);
+            this._mode = 'RTS';
             this.updatePositionFromTarget();
+            return;
         }
 
-        this._mode = mode;
+        this._mode = 'FPS';
     }
 
     // Zwraca macierz widoku (View Matrix) dla WebGL
     getViewMatrix() {
-        if (this.mode === 'FPS') return this.fpsCamera.getViewMatrix();
-
         let view = mat4.create();
-        mat4.lookAt(view, this.position, this.target, this.up);
+        if (this.mode === 'FPS') {
+            let target = vec3.create();
+            vec3.add(target, this.position, this.front);
+            mat4.lookAt(view, this.position, target, this.up);
+        } else {
+            mat4.lookAt(view, this.position, this.target, this.up);
+        }
         return view;
     }
 
     // Poruszanie punktem target po płaszczyźnie XZ (WSAD)
     processKeyboard(direction, deltaTime) {
         if (this.mode === 'FPS') {
-            this.fpsCamera.processKeyboard(direction, deltaTime);
+            let velocity = this.movementSpeed * deltaTime;
+            if (direction === 'FORWARD') {
+                vec3.scaleAndAdd(this.position, this.position, this.front, velocity);
+            }
+            if (direction === 'BACKWARD') {
+                vec3.scaleAndAdd(this.position, this.position, this.front, -velocity);
+            }
+            if (direction === 'LEFT') {
+                vec3.scaleAndAdd(this.position, this.position, this.right, -velocity);
+            }
+            if (direction === 'RIGHT') {
+                vec3.scaleAndAdd(this.position, this.position, this.right, velocity);
+            }
             return;
         }
 
@@ -111,20 +116,18 @@ export class RTSCamera {
 
     // Obrót (orbitowanie) wokół punktu target (np. Prawym przyciskiem myszy)
     processMouseOrbit(xoffset, yoffset) {
-        if (this.mode === 'FPS') {
-            this.fpsCamera.processMouseMovement(xoffset, yoffset);
-            return;
-        }
-
-        xoffset *= this.mouseSensitivity;
-        yoffset *= this.mouseSensitivity;
+        const sensitivity = this.mode === 'FPS' ? this.fpsMouseSensitivity : this.mouseSensitivity;
+        xoffset *= sensitivity;
+        yoffset *= sensitivity;
 
         this.yaw += xoffset;
         this.pitch += yoffset;
 
-        // Ograniczenie nachylenia kamery
-        if (this.pitch > this.maxPitch) this.pitch = this.maxPitch;
-        if (this.pitch < this.minPitch) this.pitch = this.minPitch;
+        if (this.mode === 'FPS') {
+            this.pitch = Math.max(-89.0, Math.min(89.0, this.pitch));
+        } else {
+            this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
+        }
 
         this.updateCameraVectors();
     }
@@ -156,7 +159,7 @@ export class RTSCamera {
         vec3.cross(this.up, this.right, this.front);
         vec3.normalize(this.up, this.up);
 
-        this.updatePositionFromTarget();
+        if (this.mode === 'RTS') this.updatePositionFromTarget();
     }
 
     // Oblicza pozycję kamery na podstawie target, kątów i dystansu
@@ -168,4 +171,4 @@ export class RTSCamera {
     }
 }
 
-export default RTSCamera;
+export default Camera;
