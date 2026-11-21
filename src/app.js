@@ -46,7 +46,6 @@ models.push(ground)
 models.push(shipModel)
 
 let selectedModel = null
-let moveTarget = null
 
 
 const modelsToSelect = []
@@ -175,15 +174,13 @@ canvas.addEventListener('contextmenu', (event) => {
 
     const path = pathFinding.findPath(selectedModel.position, point, constModels)
     if (!path) {
-        moveTarget = null
+        selectedModel.setPath([])
         return
     }
 
-    moveTarget = {
-        model: selectedModel,
-        path: path.map(([x, z]) => vec3.fromValues(x, selectedModel.position[1], z)),
-        pathIndex: 0,
-    }
+    selectedModel.setPath(path.map(([x, z]) =>
+        vec3.fromValues(x, selectedModel.position[1], z)
+    ))
 })
 
 
@@ -201,21 +198,8 @@ function animate(time){
     frame++
 
     controls.processInput(deltaTime);
-    if (moveTarget) {
-        const { model, path } = moveTarget
-        const position = path[moveTarget.pathIndex]
-        const direction = vec3.create()
-        vec3.subtract(direction, position, model.position)
-        const distance = vec3.length(direction)
-        const step = 5 * deltaTime
-
-        if (distance <= step) {
-            vec3.copy(model.position, position)
-            moveTarget.pathIndex++
-            if (moveTarget.pathIndex >= path.length) moveTarget = null
-        } else if (distance > 0) {
-            vec3.scaleAndAdd(model.position, model.position, direction, step / distance)
-        }
+    for (const model of models) {
+        if (model instanceof MovableModel) model.update(deltaTime)
     }
 
     const viewMatrix = camera.getViewMatrix();

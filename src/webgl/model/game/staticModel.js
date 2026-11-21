@@ -3,7 +3,7 @@ import Model from './../model.js'
 
 export class StaticModel extends Model{
     static async create(gl){
-        const boxModel = await Geometry.createBox(gl,1)
+        const boxModel = await Geometry.createBox(gl,1,StaticModel)
         return boxModel;
     }
 }

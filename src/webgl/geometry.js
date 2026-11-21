@@ -3,8 +3,8 @@ import Mesh from './mesh.js'
 import Model from './model/model.js'
 
 export class Geometry {
-    static async createBox(gl, size = 1.0) {
-        const model = new Model(gl)
+    static async createBox(gl, size = 1.0, ModelClass = Model) {
+        const model = new ModelClass(gl)
         const shader = await Shader.create(gl, 'default')
         const geometry = {
             position: [
