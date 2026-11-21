@@ -52,17 +52,22 @@ class Engine {
         const shipModel = await MovableModel.create(gl)
         shipModel.position = [5, 0, 5]
 
+        const shipModel2 = await MovableModel.create(gl)
+        shipModel2.position = [4, 0, 4]
+
 
         const models = []
         models.push(boxModel)
         models.push(ground)
         models.push(shipModel)
+        models.push(shipModel2)
 
-        let selectedModel = null
+        let selectedModels = []
 
 
         const modelsToSelect = []
         modelsToSelect.push(shipModel)
+        modelsToSelect.push(shipModel2)
 
 
         const constModels = []
@@ -119,7 +124,32 @@ class Engine {
         intersect.mode = 'BBOX'
         intersect.addModel(boxModel)
         intersect.addModel(ground)
-        intersect.addModel(shipModel)
+        for (const model of modelsToSelect) intersect.addModel(model)
+
+        const selectionBox = document.createElement('div')
+        Object.assign(selectionBox.style, {
+            position: 'fixed',
+            display: 'none',
+            boxSizing: 'border-box',
+            border: '1px solid red',
+            background: 'rgba(255, 0, 0, 0.15)',
+            pointerEvents: 'none',
+            zIndex: '1',
+        })
+        document.body.appendChild(selectionBox)
+
+        function setSelectedModels(models) {
+            for (const model of selectedModels) {
+                model.material = model.oldMaterial
+                delete model.oldMaterial
+            }
+
+            selectedModels = [...new Set(models)]
+            for (const model of selectedModels) {
+                model.oldMaterial = model.material
+                model.material = redMaterial
+            }
+        }
 
         function getCanvasPixel(event) {
             const rect = canvas.getBoundingClientRect()
@@ -163,43 +193,138 @@ class Engine {
             )
         }
 
+        function getScreenBounds(model, canvasRect) {
+            if (!model.bbox) return null
+
+            const modelMatrix = mat4.create()
+            const translation = mat4.create()
+            mat4.fromTranslation(translation, model.position)
+            mat4.multiply(modelMatrix, translation, model.model)
+
+            const viewProjection = mat4.create()
+            mat4.multiply(viewProjection, projection, camera.getViewMatrix())
+            mat4.multiply(viewProjection, viewProjection, modelMatrix)
+
+            const screenPoints = []
+            for (let x = 0; x < 2; x++) {
+                for (let y = 0; y < 2; y++) {
+                    for (let z = 0; z < 2; z++) {
+                        const point = vec4.fromValues(
+                            model.bbox[x ? 'max' : 'min'][0],
+                            model.bbox[y ? 'max' : 'min'][1],
+                            model.bbox[z ? 'max' : 'min'][2],
+                            1
+                        )
+                        vec4.transformMat4(point, point, viewProjection)
+                        if (point[3] <= 0) continue
+
+                        const ndcX = point[0] / point[3]
+                        const ndcY = point[1] / point[3]
+                        screenPoints.push([
+                            canvasRect.left + ((ndcX + 1) / 2) * canvasRect.width,
+                            canvasRect.top + ((1 - ndcY) / 2) * canvasRect.height,
+                        ])
+                    }
+                }
+            }
+
+            if (screenPoints.length === 0) return null
+            return {
+                left: Math.min(...screenPoints.map(([x]) => x)),
+                right: Math.max(...screenPoints.map(([x]) => x)),
+                top: Math.min(...screenPoints.map(([, y]) => y)),
+                bottom: Math.max(...screenPoints.map(([, y]) => y)),
+            }
+        }
+
+        let selectionStart = null
+        let isDraggingSelection = false
+        let suppressNextClick = false
+
+        function updateSelectionBox(x, y) {
+            const left = Math.min(selectionStart.x, x)
+            const top = Math.min(selectionStart.y, y)
+            selectionBox.style.left = `${left}px`
+            selectionBox.style.top = `${top}px`
+            selectionBox.style.width = `${Math.abs(x - selectionStart.x)}px`
+            selectionBox.style.height = `${Math.abs(y - selectionStart.y)}px`
+        }
+
+        canvas.addEventListener('mousedown', (event) => {
+            if (event.button !== 0) return
+            selectionStart = { x: event.clientX, y: event.clientY }
+            isDraggingSelection = false
+        })
+
+        window.addEventListener('mousemove', (event) => {
+            if (!selectionStart) return
+
+            const distance = Math.hypot(
+                event.clientX - selectionStart.x,
+                event.clientY - selectionStart.y
+            )
+            if (!isDraggingSelection && distance < 4) return
+
+            isDraggingSelection = true
+            selectionBox.style.display = 'block'
+            updateSelectionBox(event.clientX, event.clientY)
+        })
+
+        window.addEventListener('mouseup', (event) => {
+            if (event.button !== 0 || !selectionStart) return
+
+            if (isDraggingSelection) {
+                const left = Math.min(selectionStart.x, event.clientX)
+                const right = Math.max(selectionStart.x, event.clientX)
+                const top = Math.min(selectionStart.y, event.clientY)
+                const bottom = Math.max(selectionStart.y, event.clientY)
+                const canvasRect = canvas.getBoundingClientRect()
+                const selected = modelsToSelect.filter((model) => {
+                    const bounds = getScreenBounds(model, canvasRect)
+                    return bounds &&
+                        bounds.right >= left && bounds.left <= right &&
+                        bounds.bottom >= top && bounds.top <= bottom
+                })
+                setSelectedModels(selected)
+                suppressNextClick = event.target === canvas
+            }
+
+            selectionBox.style.display = 'none'
+            selectionStart = null
+            isDraggingSelection = false
+        })
+
         canvas.addEventListener('click', (event) => {
+            if (suppressNextClick) {
+                suppressNextClick = false
+                return
+            }
+
             const [pixelX, pixelY] = getCanvasPixel(event)
 
             const hit = intersect.get(pixelX, pixelY, projection, camera.getViewMatrix());
-            if (hit !== null) {
-                console.log("Kliknięto model:", hit.model, "w punkcie:", hit.point);
-                if (selectedModel&&selectedModel.oldMaterial) {
-                    selectedModel.material = selectedModel.oldMaterial
-                }
-                selectedModel = null
-                if (modelsToSelect.includes(hit.model)) {
-                    selectedModel = hit.model
-                    selectedModel.oldMaterial = selectedModel.material
-                    selectedModel.material = redMaterial
-                }
-            } else {
-                console.log("Kliknięto w tło");
-            }
+            setSelectedModels(hit && modelsToSelect.includes(hit.model) ? [hit.model] : [])
         })
 
         canvas.addEventListener('contextmenu', (event) => {
             event.preventDefault()
-            if (!selectedModel) return
+            if (selectedModels.length === 0) return
 
             const [pixelX, pixelY] = getCanvasPixel(event)
             const point = getGroundPoint(pixelX, pixelY)
             if (!point) return
 
-            const path = pathFinding.findPath(selectedModel.position, point, constModels)
-            if (!path) {
-                selectedModel.setPath([])
-                return
-            }
+            for (const model of selectedModels) {
+                const path = pathFinding.findPath(model.position, point, constModels)
+                if (!path) {
+                    model.setPath([])
+                    continue
+                }
 
-            selectedModel.setPath(path.map(([x, z]) =>
-                vec3.fromValues(x, selectedModel.position[1], z)
-            ))
+                model.setPath(path.map(([x, z]) =>
+                    vec3.fromValues(x, model.position[1], z)
+                ))
+            }
         })
 
 
