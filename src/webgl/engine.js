@@ -604,7 +604,7 @@ class Engine {
             deltaTime = Math.min((time-lastTime)/1000, 0.05)
             lastTime = time
 
-            frame++
+            frame = (frame + 1) % 4096
 
             controls.processInput(deltaTime);
             const movableModels = models.filter((model) => model instanceof MovableModel)
