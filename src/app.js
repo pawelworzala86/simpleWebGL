@@ -20,12 +20,13 @@ const gl = canvas.getContext('webgl2')
 
 
 //const boxModel = await ModelGLTF.create(gl,'box','default')
-const boxModel = await ModelJSON.create(gl,'box','default')
+//const boxModel = await ModelJSON.create(gl,'box','default')
 
 const panelModel = await PanelModel.create(gl,[-1.0, -1.0, 1.0, 1.0],'panel')
 
 
 
+const boxModel = await Geometry.createBox(gl,1)
 
 const ground = await Geometry.createGround(gl,10,20)
 
