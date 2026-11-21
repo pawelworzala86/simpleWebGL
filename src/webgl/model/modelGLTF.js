@@ -10,10 +10,14 @@ const { mat4 } = glMatrix
 export class ModelGLTF extends Model{
     static async create(gl,fileName){
         const model = new this(gl)
+        const fallbackMaterial = new TexturedMaterial(gl)
+        fallbackMaterial.uniforms.diffuseTexture = Texture.createWhiteTexture(gl)
+        model.material = fallbackMaterial
+        model._defaultMaterial = fallbackMaterial
 
         const gltf = await GLTFloader.load(gl,fileName+'/scene.gltf')
         const materials = gltf.materials.map(materialData=>{
-            if(!materialData.baseColorTexture) return model.material
+            if(!materialData.baseColorTexture) return fallbackMaterial
 
             const material = new TexturedMaterial(gl)
             material.uniforms.diffuseTexture = Texture.load(

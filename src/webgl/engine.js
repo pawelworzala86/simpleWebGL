@@ -144,6 +144,7 @@ class Engine {
             const uniforms = {
                 projection,
                 camera: viewMatrix,
+                lightDirection: [-0.4, 0.8, 0.35],
                 frame,
             }
             for (const model of models) {
