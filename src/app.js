@@ -1,12 +1,16 @@
 import ModelGLTF from './webgl/model/modelGLTF.js'
 import ModelJSON from './webgl/model/modelJSON.js'
 import PanelModel from './webgl/model/panelModel.js'
+import StaticModel from './webgl/model/game/staticModel.js'
+import MovableModel from './webgl/model/game/movableModel.js'
 import Geometry from './webgl/geometry.js'
 import RenderBuffer from './webgl/renderBuffer.js'
 import FPSCamera from './webgl/camera/fps.js';
 import RTSCamera from './webgl/camera/rts.js';
 import Intersect from './webgl/intersect.js'
 import Controls from './webgl/controls.js';
+import PathFinding from './webgl/pathFinding.js'
+
 
 const { mat4, vec3, vec4 } = glMatrix
 
@@ -26,13 +30,13 @@ const panelModel = await PanelModel.create(gl,[-1.0, -1.0, 1.0, 1.0],'panel')
 
 
 
-const boxModel = await Geometry.createBox(gl,1)
+const boxModel = await StaticModel.create(gl)
 
 const ground = await Geometry.createGround(gl,10,20)
 
 
 
-const shipModel = await Geometry.createBox(gl,0.15)
+const shipModel = await MovableModel.create(gl)
 shipModel.position = [5, 0, 5]
 
 
@@ -49,7 +53,10 @@ const modelsToSelect = []
 modelsToSelect.push(shipModel)
 
 
+const constModels = []
+constModels.push(boxModel)
 
+const pathFinding = new PathFinding()
 
 const renderBuffer = new RenderBuffer(gl,canvas.width,canvas.height)
 
@@ -166,9 +173,16 @@ canvas.addEventListener('contextmenu', (event) => {
     const point = getGroundPoint(pixelX, pixelY)
     if (!point) return
 
+    const path = pathFinding.findPath(selectedModel.position, point, constModels)
+    if (!path) {
+        moveTarget = null
+        return
+    }
+
     moveTarget = {
         model: selectedModel,
-        position: vec3.fromValues(point[0], selectedModel.position[1], point[2]),
+        path: path.map(([x, z]) => vec3.fromValues(x, selectedModel.position[1], z)),
+        pathIndex: 0,
     }
 })
 
@@ -188,7 +202,8 @@ function animate(time){
 
     controls.processInput(deltaTime);
     if (moveTarget) {
-        const { model, position } = moveTarget
+        const { model, path } = moveTarget
+        const position = path[moveTarget.pathIndex]
         const direction = vec3.create()
         vec3.subtract(direction, position, model.position)
         const distance = vec3.length(direction)
@@ -196,7 +211,8 @@ function animate(time){
 
         if (distance <= step) {
             vec3.copy(model.position, position)
-            moveTarget = null
+            moveTarget.pathIndex++
+            if (moveTarget.pathIndex >= path.length) moveTarget = null
         } else if (distance > 0) {
             vec3.scaleAndAdd(model.position, model.position, direction, step / distance)
         }
