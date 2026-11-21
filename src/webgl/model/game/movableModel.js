@@ -1,5 +1,4 @@
 import ModelGLTF from './../../../webgl/model/modelGLTF.js'
-import Model from './../model.js'
 import Mesh from './../../mesh.js'
 
 const { mat4, vec3 } = glMatrix
@@ -39,7 +38,7 @@ export class MovableModel extends ModelGLTF{
             )
             model.collisionRadius = Math.hypot(halfWidth, halfDepth)
         }
-        model.childrens.push(await Mesh.create(gl, model.material, {
+        /*model.childrens.push(await Mesh.create(gl, model.material, {
             position: [
                 -0.07, -0.07, 0.1,
                  0.07, -0.07, 0.1,
@@ -53,7 +52,7 @@ export class MovableModel extends ModelGLTF{
                 2, 3, 4,
                 3, 0, 4,
             ],
-        }))
+        }))*/
         return model
     }
 
