@@ -314,18 +314,78 @@ class Engine {
             const point = getGroundPoint(pixelX, pixelY)
             if (!point) return
 
-            for (const model of selectedModels) {
-                const path = pathFinding.findPath(model.position, point, constModels)
-                if (!path) {
-                    model.setPath([])
-                    continue
-                }
+            const columns = Math.ceil(Math.sqrt(selectedModels.length))
+            const rows = Math.ceil(selectedModels.length / columns)
+            const spacing = selectedModels.reduce(
+                (maximum, model) => Math.max(maximum, model.collisionRadius * 2 + 0.16),
+                0.7
+            )
+            const offsets = selectedModels.map((model, index) => [
+                (index % columns - (columns - 1) / 2) * spacing,
+                (Math.floor(index / columns) - (rows - 1) / 2) * spacing,
+            ])
 
-                model.setPath(path.map(([x, z]) =>
-                    vec3.fromValues(x, model.position[1], z)
-                ))
+            let paths = null
+            for (let rotation = 0; rotation < 4 && !paths; rotation++) {
+                const angle = rotation * Math.PI / 4
+                const destinations = offsets.map(([x, z], index) => {
+                    const model = selectedModels[index]
+                    return vec3.fromValues(
+                        point[0] + x * Math.cos(angle) - z * Math.sin(angle),
+                        model.position[1],
+                        point[2] + x * Math.sin(angle) + z * Math.cos(angle)
+                    )
+                })
+                const candidatePaths = selectedModels.map((model, index) =>
+                    pathFinding.findPath(model.position, destinations[index], constModels)
+                )
+                if (candidatePaths.every((path) => path !== null)) {
+                    paths = candidatePaths
+                }
+            }
+
+            for (let i = 0; i < selectedModels.length; i++) {
+                const path = paths
+                    ? paths[i]
+                    : pathFinding.findPath(selectedModels[i].position, point, constModels)
+                selectedModels[i].setPath(path ? path.map(([x, z]) =>
+                    vec3.fromValues(x, selectedModels[i].position[1], z)
+                ) : [])
             }
         })
+
+        function resolveMovementCollisions(states, plans) {
+            for (let i = 0; i < states.length; i++) {
+                for (let j = i + 1; j < states.length; j++) {
+                    if (!plans[i] && !plans[j]) continue
+
+                    const firstPosition = plans[i] ? plans[i].position : states[i].position
+                    const secondPosition = plans[j] ? plans[j].position : states[j].position
+                    const differenceX = firstPosition[0] - secondPosition[0]
+                    const differenceZ = firstPosition[2] - secondPosition[2]
+                    const distance = Math.hypot(differenceX, differenceZ)
+                    const minimumDistance = states[i].radius + states[j].radius + 0.08
+                    if (distance >= minimumDistance) continue
+
+                    const overlap = minimumDistance - distance
+                    const firstShare = plans[i] && plans[j] ? 0.5 : plans[i] ? 1 : 0
+                    const secondShare = plans[i] && plans[j] ? 0.5 : plans[j] ? 1 : 0
+                    const directionX = distance < 1e-8 ? -1 : differenceX / distance
+                    const directionZ = distance < 1e-8 ? 0 : differenceZ / distance
+
+                    if (plans[i]) {
+                        plans[i].position[0] += directionX * overlap * firstShare
+                        plans[i].position[2] += directionZ * overlap * firstShare
+                        plans[i].reachedTarget = false
+                    }
+                    if (plans[j]) {
+                        plans[j].position[0] -= directionX * overlap * secondShare
+                        plans[j].position[2] -= directionZ * overlap * secondShare
+                        plans[j].reachedTarget = false
+                    }
+                }
+            }
+        }
 
 
 
@@ -342,8 +402,16 @@ class Engine {
             frame++
 
             controls.processInput(deltaTime);
-            for (const model of models) {
-                if (model instanceof MovableModel) model.update(deltaTime)
+            const movableModels = models.filter((model) => model instanceof MovableModel)
+            const movementStates = movableModels.map((model, index) =>
+                model.getMovementState(index)
+            )
+            const movementPlans = movementStates.map((state) =>
+                state.model.getMovementPlan(deltaTime, movementStates, state)
+            )
+            resolveMovementCollisions(movementStates, movementPlans)
+            for (let i = 0; i < movementStates.length; i++) {
+                movementStates[i].model.applyMovementPlan(movementPlans[i])
             }
 
             const viewMatrix = camera.getViewMatrix();

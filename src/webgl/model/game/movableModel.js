@@ -9,10 +9,17 @@ export class MovableModel extends Model{
         this.path = []
         this.pathIndex = 0
         this.speed = 5
+        this.collisionRadius = 0.22
     }
 
     static async create(gl){
-        return Geometry.createBox(gl,0.15,MovableModel)
+        const model = await Geometry.createBox(gl,0.15,MovableModel)
+        if (model.bbox) {
+            const halfWidth = (model.bbox.max[0] - model.bbox.min[0]) / 2
+            const halfDepth = (model.bbox.max[2] - model.bbox.min[2]) / 2
+            model.collisionRadius = Math.hypot(halfWidth, halfDepth)
+        }
+        return model
     }
 
     setPath(path){
@@ -20,25 +27,191 @@ export class MovableModel extends Model{
         this.pathIndex = 0
     }
 
-    update(deltaTime){
-        if (this.pathIndex >= this.path.length) return
+    getMovementState(index){
+        const position = Array.from(this.position)
+        const velocity = [0, 0]
+        const target = this.path[this.pathIndex]
+        const destination = this.path[this.path.length - 1]
+        if (target) {
+            const directionX = target[0] - position[0]
+            const directionZ = target[2] - position[2]
+            const distance = Math.hypot(directionX, directionZ)
+            if (distance > 0) {
+                velocity[0] = directionX / distance * this.speed
+                velocity[1] = directionZ / distance * this.speed
+            }
+        }
+
+        return {
+            model: this,
+            index,
+            position,
+            velocity,
+            radius: this.collisionRadius,
+            distanceToDestination: destination
+                ? Math.hypot(destination[0] - position[0], destination[2] - position[2])
+                : 0,
+        }
+    }
+
+    getMovementPlan(deltaTime, states, state){
+        if (this.pathIndex >= this.path.length || deltaTime <= 0) return null
+
+        for (const other of states) {
+            if (other.model === this) continue
+            const relativeX = other.position[0] - state.position[0]
+            const relativeZ = other.position[2] - state.position[2]
+            const distance = Math.hypot(relativeX, relativeZ)
+            const safeDistance = state.radius + other.radius + 0.08
+            const relativeVelocityX = other.velocity[0] - state.velocity[0]
+            const relativeVelocityZ = other.velocity[1] - state.velocity[1]
+            const isApproaching =
+                relativeX * relativeVelocityX + relativeZ * relativeVelocityZ < 0
+            const otherIsStationary = Math.hypot(other.velocity[0], other.velocity[1]) < 1e-8
+            const stopDistance = safeDistance * 1.2
+            const bothNearDestination =
+                state.distanceToDestination < stopDistance &&
+                other.distanceToDestination < stopDistance
+            if (distance < stopDistance &&
+                (bothNearDestination || (isApproaching && otherIsStationary))) {
+                return { position: [...state.position], stop: true }
+            }
+        }
 
         const target = this.path[this.pathIndex]
-        const direction = vec3.create()
-        vec3.subtract(direction, target, this.position)
-        const distance = vec3.length(direction)
-        const step = this.speed * deltaTime
-
-        if (distance <= step) {
-            vec3.copy(this.position, target)
-            this.pathIndex++
-            if (this.pathIndex >= this.path.length) {
-                this.path = []
-                this.pathIndex = 0
-            }
-        } else if (distance > 0) {
-            vec3.scaleAndAdd(this.position, this.position, direction, step / distance)
+        const directionX = target[0] - state.position[0]
+        const directionZ = target[2] - state.position[2]
+        const distance = Math.hypot(directionX, directionZ)
+        if (distance === 0) {
+            return { position: [...state.position], reachedTarget: true }
         }
+
+        const desiredSpeed = Math.min(this.speed, distance / deltaTime)
+        const desiredX = directionX / distance * desiredSpeed
+        const desiredZ = directionZ / distance * desiredSpeed
+        let movementX = desiredX
+        let movementZ = desiredZ
+        let avoidanceStrength = 0
+        const horizon = 1.3
+
+        for (const other of states) {
+            if (other.model === this) continue
+
+            const relativeX = other.position[0] - state.position[0]
+            const relativeZ = other.position[2] - state.position[2]
+            const currentDistance = Math.hypot(relativeX, relativeZ)
+            const safeDistance = state.radius + other.radius + 0.08
+            const relativeVelocityX = other.velocity[0] - state.velocity[0]
+            const relativeVelocityZ = other.velocity[1] - state.velocity[1]
+            const relativeSpeedSquared =
+                relativeVelocityX * relativeVelocityX +
+                relativeVelocityZ * relativeVelocityZ
+
+            let closestTime = 0
+            let closestDistance = currentDistance
+            if (relativeSpeedSquared > 1e-8) {
+                closestTime = Math.max(0, Math.min(
+                    horizon,
+                    -(relativeX * relativeVelocityX + relativeZ * relativeVelocityZ) /
+                        relativeSpeedSquared
+                ))
+                closestDistance = Math.hypot(
+                    relativeX + relativeVelocityX * closestTime,
+                    relativeZ + relativeVelocityZ * closestTime
+                )
+            }
+
+            if (closestDistance < safeDistance && closestTime > 0) {
+                const first = state.index < other.index ? state : other
+                const second = first === state ? other : state
+                let pairVelocityX = second.velocity[0] - first.velocity[0]
+                let pairVelocityZ = second.velocity[1] - first.velocity[1]
+                let pairSpeed = Math.hypot(pairVelocityX, pairVelocityZ)
+
+                if (pairSpeed < 1e-8) {
+                    pairVelocityX = second.position[0] - first.position[0]
+                    pairVelocityZ = second.position[2] - first.position[2]
+                    pairSpeed = Math.hypot(pairVelocityX, pairVelocityZ)
+                }
+
+                if (pairSpeed < 1e-8) {
+                    pairVelocityX = 1
+                    pairVelocityZ = 0
+                    pairSpeed = 1
+                }
+
+                const sideX = -pairVelocityZ / pairSpeed
+                const sideZ = pairVelocityX / pairSpeed
+                const sideSign = state === first ? 1 : -1
+                const urgency = (safeDistance - closestDistance) / safeDistance
+                const timing = 1 - closestTime / horizon
+                const strength = urgency * (0.6 + timing)
+                movementX += sideX * sideSign * strength * this.speed
+                movementZ += sideZ * sideSign * strength * this.speed
+                avoidanceStrength += strength
+            }
+
+            if (currentDistance < safeDistance) {
+                let awayX = state.position[0] - other.position[0]
+                let awayZ = state.position[2] - other.position[2]
+                if (currentDistance < 1e-8) {
+                    awayX = state.index < other.index ? -1 : 1
+                    awayZ = 0
+                } else {
+                    awayX /= currentDistance
+                    awayZ /= currentDistance
+                }
+
+                const strength = (safeDistance - currentDistance) / safeDistance * 2
+                movementX += awayX * strength * this.speed
+                movementZ += awayZ * strength * this.speed
+                avoidanceStrength += strength
+            }
+        }
+
+        const movementLength = Math.hypot(movementX, movementZ)
+        if (movementLength > 1e-8) {
+            movementX /= movementLength
+            movementZ /= movementLength
+        }
+
+        const step = avoidanceStrength > 0.05
+            ? this.speed * deltaTime
+            : Math.min(this.speed * deltaTime, distance)
+        const reachedTarget = avoidanceStrength <= 0.05 && distance <= step
+
+        return {
+            position: reachedTarget
+                ? [...target]
+                : [
+                    state.position[0] + movementX * step,
+                    state.position[1],
+                    state.position[2] + movementZ * step,
+                ],
+            reachedTarget,
+        }
+    }
+
+    applyMovementPlan(plan){
+        if (!plan) return
+        if (plan.stop) {
+            this.path = []
+            this.pathIndex = 0
+            return
+        }
+        vec3.copy(this.position, plan.position)
+        if (!plan.reachedTarget) return
+
+        this.pathIndex++
+        if (this.pathIndex >= this.path.length) {
+            this.path = []
+            this.pathIndex = 0
+        }
+    }
+
+    update(deltaTime){
+        const state = this.getMovementState(0)
+        this.applyMovementPlan(this.getMovementPlan(deltaTime, [state], state))
     }
 }
 
