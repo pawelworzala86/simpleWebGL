@@ -6,6 +6,8 @@ import MovableModel from './model/game/movableModel.js'
 import ResourceModel from './model/game/resourceModel.js'
 import CenterModel from './model/game/centerModel.js'
 
+import Terrain from './model/terrain.js'
+
 import Geometry from './geometry.js'
 import RenderBuffer from './renderBuffer.js'
 import Camera from './camera.js';
@@ -51,6 +53,9 @@ class Engine {
 
         const ground = await Geometry.createGround(gl,10,20)
 
+        //const terrain = await Terrain.create(gl,10,20)
+        //terrain.position = [-20, 0, -20]
+
 
 
         const shipModel = await MovableModel.create(gl)
@@ -70,6 +75,7 @@ class Engine {
         models.push(shipModel)
         models.push(shipModel2)
         models.push(resourceModel)
+        //models.push(terrain)
 
         let selectedModels = []
 
