@@ -1,7 +1,11 @@
 import DefaultMaterial from './material/defaultMaterial.js'
+
 import PanelModel from './model/panelModel.js'
 import StaticModel from './model/game/staticModel.js'
 import MovableModel from './model/game/movableModel.js'
+import ResourceModel from './model/game/resourceModel.js'
+import CenterModel from './model/game/centerModel.js'
+
 import Geometry from './geometry.js'
 import RenderBuffer from './renderBuffer.js'
 import Camera from './camera.js';
@@ -43,7 +47,7 @@ class Engine {
 
 
 
-        const boxModel = await StaticModel.create(gl)
+        const centerModel = await CenterModel.create(gl)
 
         const ground = await Geometry.createGround(gl,10,20)
 
@@ -56,11 +60,16 @@ class Engine {
         shipModel2.position = [4, 0, 4]
 
 
+        const resourceModel = await ResourceModel.create(gl)
+        resourceModel.position = [3, 0, -1]
+
+
         const models = []
-        models.push(boxModel)
+        models.push(centerModel)
         models.push(ground)
         models.push(shipModel)
         models.push(shipModel2)
+        models.push(resourceModel)
 
         let selectedModels = []
 
@@ -71,11 +80,28 @@ class Engine {
 
 
         const constModels = []
-        constModels.push(boxModel)
+        constModels.push(centerModel)
+        constModels.push(resourceModel)
+
+
+        const resourceModels = []
+        resourceModels.push(resourceModel)
+
+
 
         const pathFinding = new PathFinding()
 
         const renderBuffer = new RenderBuffer(gl,canvas.width,canvas.height)
+
+
+
+
+
+
+
+
+
+
 
 
         let deltaTime = 0
@@ -122,8 +148,9 @@ class Engine {
 
         const intersect = new Intersect(canvas.width, canvas.height)
         intersect.mode = 'BBOX'
-        intersect.addModel(boxModel)
-        intersect.addModel(ground)
+        for(const constModel of constModels){
+            intersect.addModel(constModel)
+        }
         for (const model of modelsToSelect) intersect.addModel(model)
 
         const selectionBox = document.createElement('div')
