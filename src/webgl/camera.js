@@ -38,8 +38,26 @@ export class Camera {
         this.followSmoothing = 8;
 
         this._mode = 'RTS';
+        this._modes = ['RTS', 'FPS', 'TPP'];
         this.updateCameraVectors();
         this.mode = mode;
+    }
+
+    get modes() {
+        return [...this._modes];
+    }
+
+    set modes(modes) {
+        const supportedModes = ['RTS', 'FPS', 'TPP'];
+        if (!Array.isArray(modes) ||
+            modes.length === 0 ||
+            modes.some((mode) => !supportedModes.includes(mode)) ||
+            !modes.includes('RTS')) {
+            throw new RangeError('Camera modes must include RTS and contain only supported modes');
+        }
+
+        this._modes = [...new Set(modes)];
+        if (!this._modes.includes(this._mode)) this.mode = 'RTS';
     }
 
     get mode() {
@@ -47,7 +65,7 @@ export class Camera {
     }
 
     set mode(mode) {
-        if (mode !== 'RTS' && mode !== 'FPS') {
+        if (!this._modes.includes(mode) || (mode === 'TPP' && !this.followTarget)) {
             throw new RangeError(`Unsupported camera mode: ${mode}`);
         }
         if (mode === this._mode) return;
@@ -62,12 +80,15 @@ export class Camera {
             return;
         }
 
-        this._mode = 'FPS';
+        this.followTarget = null;
+        this._mode = mode;
     }
 
     follow(model) {
+        if (!this._modes.includes('TPP')) return false;
         this.followTarget = model;
         this._mode = 'TPP';
+        return true;
     }
 
     // Zwraca macierz widoku (View Matrix) dla WebGL

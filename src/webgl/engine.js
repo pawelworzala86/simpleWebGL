@@ -80,6 +80,7 @@ class Engine {
         mat4.perspectiveNO(projection, 45, canvas.width / canvas.height, 1, 100)
 
         const camera = new Camera([0, 10, 10], [0, 0, 0], 'RTS')
+        camera.modes = ['RTS']//['RTS', 'FPS', 'TPP']
 
         function setScene(targetBuffer) {
             if (targetBuffer) {

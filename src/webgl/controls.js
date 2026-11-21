@@ -26,12 +26,15 @@ export class Controls{
                             selectedModels[0] instanceof MovableModel
                             ? selectedModels[0]
                             : null
-                        if (model) {
+                        if (model && this.camera.modes.includes('TPP')) {
                             this.controlledModel = model
                             model.setPlayerControlled(true)
                             this.camera.follow(model)
-                        } else {
-                            this.camera.mode = this.camera.mode === 'RTS' ? 'FPS' : 'RTS';
+                        } else if (this.camera.mode === 'RTS' &&
+                            this.camera.modes.includes('FPS')) {
+                            this.camera.mode = 'FPS'
+                        } else if (this.camera.mode === 'FPS') {
+                            this.camera.mode = 'RTS'
                         }
                     }
                 }
