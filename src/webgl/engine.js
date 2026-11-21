@@ -69,9 +69,9 @@ class Engine {
         const modelsToSelect = [shipModel, shipModel2]
         const constModels = [centerModel, resourceModel]
 
-        const modelGLTF = await ModelGLTF.create(gl, 'box')
-        modelGLTF.position = [-2, 0, -5]
-        models.push(modelGLTF)
+        //const modelGLTF = await ModelGLTF.create(gl, 'box')
+        //modelGLTF.position = [-2, 0, -5]
+        //models.push(modelGLTF)
 
         const pathFinding = new PathFinding()
         const renderBuffer = new RenderBuffer(gl, canvas.width, canvas.height)
