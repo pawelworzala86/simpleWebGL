@@ -67,6 +67,16 @@ function getChildren(node) {
     return []
 }
 
+function getNodeMatrix(node, parentMatrix) {
+    const translation = mat4.create()
+    mat4.fromTranslation(translation, node.position || [0, 0, 0])
+    mat4.multiply(translation, translation, node.model || mat4.create())
+
+    const modelMatrix = mat4.create()
+    mat4.multiply(modelMatrix, parentMatrix, translation)
+    return modelMatrix
+}
+
 function getBoundingBoxGeometry(bbox) {
     if (!bbox || !bbox.min || !bbox.max ||
         bbox.min.length < 3 || bbox.max.length < 3 ||
@@ -162,8 +172,7 @@ export class Intersect {
         }
 
         const intersectNode = (node, parentMatrix, owner) => {
-            const modelMatrix = mat4.create()
-            mat4.multiply(modelMatrix, parentMatrix, node.model || mat4.create())
+            const modelMatrix = getNodeMatrix(node, parentMatrix)
             const children = getChildren(node)
 
             if (children.length) {
@@ -180,8 +189,7 @@ export class Intersect {
         for (const model of this.models) {
             if (this.mode === 'BBOX') {
                 const geometry = getBoundingBoxGeometry(model.bbox)
-                const modelMatrix = mat4.create()
-                mat4.multiply(modelMatrix, identity, model.model || identity)
+                const modelMatrix = getNodeMatrix(model, identity)
                 testGeometry(geometry, modelMatrix, model)
             } else {
                 intersectNode(model, identity, model)

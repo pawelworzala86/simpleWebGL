@@ -8,7 +8,7 @@ import RTSCamera from './webgl/camera/rts.js';
 import Intersect from './webgl/intersect.js'
 import Controls from './webgl/controls.js';
 
-const { mat4 } = glMatrix
+const { mat4, vec3, vec4 } = glMatrix
 
 
 
@@ -31,14 +31,22 @@ const boxModel = await Geometry.createBox(gl,1)
 const ground = await Geometry.createGround(gl,10,20)
 
 
+
+const shipModel = await Geometry.createBox(gl,0.15)
+shipModel.position = [5, 0, 5]
+
+
 const models = []
 models.push(boxModel)
 models.push(ground)
+models.push(shipModel)
+
+let selectedModel = null
+let moveTarget = null
 
 
-
-
-
+const modelsToSelect = []
+modelsToSelect.push(shipModel)
 
 
 
@@ -92,20 +100,75 @@ const intersect = new Intersect(canvas.width, canvas.height)
 intersect.mode = 'BBOX'
 intersect.addModel(boxModel)
 intersect.addModel(ground)
+intersect.addModel(shipModel)
+
+function getCanvasPixel(event) {
+    const rect = canvas.getBoundingClientRect()
+    return [
+        (event.clientX - rect.left) * (canvas.width / rect.width),
+        canvas.height - (event.clientY - rect.top) * (canvas.height / rect.height) - 1,
+    ]
+}
+
+function getGroundPoint(pixelX, pixelY) {
+    if (pixelX < 0 || pixelY < 0 || pixelX >= canvas.width || pixelY >= canvas.height) return null
+
+    const ndcX = (2 * (Math.floor(pixelX) + 0.5)) / canvas.width - 1
+    const ndcY = (2 * (Math.floor(pixelY) + 0.5)) / canvas.height - 1
+    const viewProjection = mat4.create()
+    mat4.multiply(viewProjection, projection, camera.getViewMatrix())
+
+    const inverseViewProjection = mat4.create()
+    if (!mat4.invert(inverseViewProjection, viewProjection)) return null
+
+    const near = vec4.fromValues(ndcX, ndcY, -1, 1)
+    const far = vec4.fromValues(ndcX, ndcY, 1, 1)
+    vec4.transformMat4(near, near, inverseViewProjection)
+    vec4.transformMat4(far, far, inverseViewProjection)
+    if (near[3] === 0 || far[3] === 0) return null
+
+    for (let i = 0; i < 3; i++) {
+        near[i] /= near[3]
+        far[i] /= far[3]
+    }
+
+    const directionY = far[1] - near[1]
+    if (Math.abs(directionY) < 1e-8) return null
+    const distance = -near[1] / directionY
+    if (distance < 0 || distance > 1) return null
+
+    return vec3.fromValues(
+        near[0] + (far[0] - near[0]) * distance,
+        0,
+        near[2] + (far[2] - near[2]) * distance
+    )
+}
 
 canvas.addEventListener('click', (event) => {
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
-
-    const pixelX = mouseX * (canvas.width / canvas.clientWidth);
-    const pixelY = canvas.height - (mouseY * (canvas.height / canvas.clientHeight)) - 1;
+    const [pixelX, pixelY] = getCanvasPixel(event)
 
     const hit = intersect.get(pixelX, pixelY, projection, camera.getViewMatrix());
     if (hit !== null) {
         console.log("Kliknięto model:", hit.model, "w punkcie:", hit.point);
+        if (modelsToSelect.includes(hit.model)) {
+            selectedModel = hit.model;
+        }
     } else {
         console.log("Kliknięto w tło");
+    }
+})
+
+canvas.addEventListener('contextmenu', (event) => {
+    event.preventDefault()
+    if (!selectedModel) return
+
+    const [pixelX, pixelY] = getCanvasPixel(event)
+    const point = getGroundPoint(pixelX, pixelY)
+    if (!point) return
+
+    moveTarget = {
+        model: selectedModel,
+        position: vec3.fromValues(point[0], selectedModel.position[1], point[2]),
     }
 })
 
@@ -124,6 +187,20 @@ function animate(time){
     frame++
 
     controls.processInput(deltaTime);
+    if (moveTarget) {
+        const { model, position } = moveTarget
+        const direction = vec3.create()
+        vec3.subtract(direction, position, model.position)
+        const distance = vec3.length(direction)
+        const step = 5 * deltaTime
+
+        if (distance <= step) {
+            vec3.copy(model.position, position)
+            moveTarget = null
+        } else if (distance > 0) {
+            vec3.scaleAndAdd(model.position, model.position, direction, step / distance)
+        }
+    }
 
     const viewMatrix = camera.getViewMatrix();
 

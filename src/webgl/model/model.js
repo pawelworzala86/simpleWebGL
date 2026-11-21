@@ -3,6 +3,20 @@ import Scene from './../scene.js'
 const { mat4, vec3 } = glMatrix
 
 export class Model extends Scene{
+    constructor(gl){
+        super(gl)
+        this.position = vec3.create()
+    }
+
+    render(uniforms, modelMatrix = mat4.create(), shader = null){
+        const translation = mat4.create()
+        mat4.fromTranslation(translation, this.position)
+
+        const positionedMatrix = mat4.create()
+        mat4.multiply(positionedMatrix, modelMatrix, translation)
+        super.render(uniforms, positionedMatrix, shader)
+    }
+
     calculateBBox(){
         const bbox = {
             min: [Infinity, Infinity, Infinity],
