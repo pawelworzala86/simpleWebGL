@@ -169,9 +169,13 @@ class Engine {
             const hit = intersect.get(pixelX, pixelY, projection, camera.getViewMatrix());
             if (hit !== null) {
                 console.log("Kliknięto model:", hit.model, "w punkcie:", hit.point);
+                if (selectedModel&&selectedModel.oldMaterial) {
+                    selectedModel.material = selectedModel.oldMaterial
+                }
                 selectedModel = null
                 if (modelsToSelect.includes(hit.model)) {
-                    selectedModel = hit.model;
+                    selectedModel = hit.model
+                    selectedModel.oldMaterial = selectedModel.material
                     selectedModel.material = redMaterial
                 }
             } else {
