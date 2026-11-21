@@ -4,7 +4,38 @@ export class ResourceModel extends ModelGLTF{
     constructor(gl){
         super(gl)
         this.gatherTime = 3000
+        this.stations = Array.from({ length: 8 }, (_, index) => {
+            const angle = index * Math.PI / 4
+            return {
+                index,
+                direction: [Math.cos(angle), Math.sin(angle)],
+                owner: null,
+            }
+        })
     }
+
+    getAvailableStations(model, reservedStations = new Set()){
+        return this.stations.filter((station) =>
+            (!station.owner || station.owner === model) &&
+            !reservedStations.has(station.index)
+        )
+    }
+
+    reserveStation(model, stationIndex){
+        const station = this.stations.find(({ index }) => index === stationIndex)
+        if (!station || (station.owner && station.owner !== model)) return false
+
+        this.releaseStation(model)
+        station.owner = model
+        return true
+    }
+
+    releaseStation(model){
+        for (const station of this.stations) {
+            if (station.owner === model) station.owner = null
+        }
+    }
+
     static async create(gl){
         const model = await super.create(gl,'meteors')
         model.scale = 0.35

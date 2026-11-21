@@ -18,6 +18,7 @@ export class MovableModel extends ModelGLTF{
         this.shuttlePaths = null
         this.shuttleLegIndex = 0
         this.resourceModel = null
+        this.resourceStationIndex = null
         this.isGathering = false
         this.gatheredResources = null
         this.gatherRequestId = 0
@@ -30,12 +31,15 @@ export class MovableModel extends ModelGLTF{
         //const model = await MovableModel.create(gl,'box')
         //const model = await Geometry.createBox(gl,0.15,MovableModel)
         if (model.bbox) {
-            const halfWidth = (model.bbox.max[0] - model.bbox.min[0]) / 2
-            const halfDepth = Math.max(
-                (model.bbox.max[2] - model.bbox.min[2]) / 2,
-                0.25
+            const halfWidth = Math.max(
+                Math.abs(model.bbox.min[0]),
+                Math.abs(model.bbox.max[0])
             )
-            model.collisionRadius = Math.hypot(halfWidth, halfDepth)
+            const halfDepth = Math.max(
+                Math.abs(model.bbox.min[2]),
+                Math.abs(model.bbox.max[2])
+            )
+            model.collisionRadius = Math.max(0.05, Math.hypot(halfWidth, halfDepth))
         }
         /*model.childrens.push(await Mesh.create(gl, model.material, {
             position: [
@@ -57,19 +61,25 @@ export class MovableModel extends ModelGLTF{
 
     setPath(path){
         this.gatherRequestId++
+        if (this.resourceModel) this.resourceModel.releaseStation(this)
         this.shuttlePaths = null
         this.resourceModel = null
+        this.resourceStationIndex = null
         this.isGathering = false
         this.gatheredResources = null
         this.path = path
         this.pathIndex = 0
     }
 
-    setShuttlePaths(paths, resourceModel){
+    setShuttlePaths(paths, resourceModel, stationIndex){
         this.gatherRequestId++
+        if (this.resourceModel && this.resourceModel !== resourceModel) {
+            this.resourceModel.releaseStation(this)
+        }
         this.shuttlePaths = paths
         this.shuttleLegIndex = 0
         this.resourceModel = resourceModel
+        this.resourceStationIndex = stationIndex
         this.isGathering = false
         this.gatheredResources = null
         this.path = paths[0]
@@ -78,9 +88,10 @@ export class MovableModel extends ModelGLTF{
 
     gatherResources(){
         const requestId = ++this.gatherRequestId
+        const resourceModel = this.resourceModel
         this.isGathering = true
         Promise.resolve()
-            .then(() => this.resourceModel.gather())
+            .then(() => resourceModel.gather())
             .then((resources) => {
                 if (requestId !== this.gatherRequestId) return
                 this.gatheredResources = resources
@@ -92,6 +103,9 @@ export class MovableModel extends ModelGLTF{
                 this.path = []
                 this.pathIndex = 0
                 this.shuttlePaths = null
+                resourceModel.releaseStation(this)
+                this.resourceModel = null
+                this.resourceStationIndex = null
                 console.error('Failed to gather resources:', error)
             })
     }
@@ -211,7 +225,7 @@ export class MovableModel extends ModelGLTF{
             const relativeZ = other.position[2] - state.position[2]
             const distance = Math.hypot(relativeX, relativeZ)
             const safeDistance = state.radius + other.radius + 0.08
-            const stopDistance = safeDistance * 1.2
+            const stopDistance = safeDistance * 1.05
             const bothNearDestination =
                 state.distanceToDestination < stopDistance &&
                 other.distanceToDestination < stopDistance
@@ -234,7 +248,7 @@ export class MovableModel extends ModelGLTF{
         let movementX = desiredX
         let movementZ = desiredZ
         let avoidanceStrength = 0
-        const horizon = 1.3
+        const horizon = 2
 
         for (const other of states) {
             if (other.model === this) continue

@@ -87,13 +87,12 @@ export default function installCommands({
                 (center.position[2] - resource.position[2]) / directionLength,
             ]
             : [1, 0]
-        const resourceDirection = direction
         const centerDirection = [-direction[0], -direction[1]]
         const slotSpacing = selectedModels.reduce(
-            (maximum, model) => Math.max(maximum, model.collisionRadius * 2 + 0.4),
+            (maximum, model) => Math.max(maximum, model.collisionRadius * 2 + 0.16),
             0
         )
-        const reservedResourcePoints = []
+        const reservedResourceStations = new Set()
         const reservedCenterPoints = []
 
         for (let index = 0; index < selectedModels.length; index++) {
@@ -109,60 +108,76 @@ export default function installCommands({
             }
 
             let shuttlePaths = null
-            let resourcePoint = null
             let centerPoint = null
-            for (const candidateOffset of candidateOffsets) {
-                const candidateResourcePoint = getApproachPoint(
+            let stationIndex = null
+            const availableStations = resource.getAvailableStations(
+                model,
+                reservedResourceStations
+            ).map((station) => {
+                const point = getApproachPoint(
                     resource,
-                    resourceDirection,
-                    candidateOffset,
+                    station.direction,
+                    0,
                     model
                 )
-                const candidateCenterPoint = getApproachPoint(
-                    center,
-                    centerDirection,
-                    candidateOffset,
-                    model
-                )
-                const overlapsReservedSlot = (points, candidate) => points.some((point) =>
-                    Math.hypot(
-                        point[0] - candidate[0],
-                        point[2] - candidate[2]
-                    ) < slotSpacing
-                )
-                if (overlapsReservedSlot(reservedResourcePoints, candidateResourcePoint) ||
-                    overlapsReservedSlot(reservedCenterPoints, candidateCenterPoint)) {
-                    continue
+                return {
+                    station,
+                    point,
+                    distanceToCenter: Math.hypot(
+                        point[0] - center.position[0],
+                        point[2] - center.position[2]
+                    ),
                 }
+            }).sort((first, second) =>
+                first.distanceToCenter - second.distanceToCenter
+            )
 
-                const pathToResource = pathFinding.findPath(
-                    model.position,
-                    candidateResourcePoint,
-                    obstacles
-                )
-                const pathToCenter = pathFinding.findPath(
-                    candidateResourcePoint,
-                    candidateCenterPoint,
-                    obstacles
-                )
-                const pathToResourceAgain = pathFinding.findPath(
-                    candidateCenterPoint,
-                    candidateResourcePoint,
-                    obstacles
-                )
-                if (!pathToResource || !pathToCenter || !pathToResourceAgain) continue
+            for (const { station, point: candidateResourcePoint } of availableStations) {
+                for (const candidateOffset of candidateOffsets) {
+                    const candidateCenterPoint = getApproachPoint(
+                        center,
+                        centerDirection,
+                        candidateOffset,
+                        model
+                    )
+                    const overlapsReservedCenter = reservedCenterPoints.some((point) =>
+                        Math.hypot(
+                            point[0] - candidateCenterPoint[0],
+                            point[2] - candidateCenterPoint[2]
+                        ) < slotSpacing
+                    )
+                    if (overlapsReservedCenter) continue
 
-                const toWorldPath = (path) => path.map(([x, z]) =>
-                    vec3.fromValues(x, model.position[1], z)
-                )
-                shuttlePaths = [
-                    toWorldPath(pathToResource),
-                    toWorldPath(pathToCenter),
-                    toWorldPath(pathToResourceAgain),
-                ]
-                resourcePoint = candidateResourcePoint
-                centerPoint = candidateCenterPoint
-                break
+                    const pathToResource = pathFinding.findPath(
+                        model.position,
+                        candidateResourcePoint,
+                        obstacles
+                    )
+                    const pathToCenter = pathFinding.findPath(
+                        candidateResourcePoint,
+                        candidateCenterPoint,
+                        obstacles
+                    )
+                    const pathToResourceAgain = pathFinding.findPath(
+                        candidateCenterPoint,
+                        candidateResourcePoint,
+                        obstacles
+                    )
+                    if (!pathToResource || !pathToCenter || !pathToResourceAgain) continue
+
+                    const toWorldPath = (path) => path.map(([x, z]) =>
+                        vec3.fromValues(x, model.position[1], z)
+                    )
+                    shuttlePaths = [
+                        toWorldPath(pathToResource),
+                        toWorldPath(pathToCenter),
+                        toWorldPath(pathToResourceAgain),
+                    ]
+                    centerPoint = candidateCenterPoint
+                    stationIndex = station.index
+                    break
+                }
+                if (shuttlePaths) break
             }
 
             if (!shuttlePaths) {
@@ -170,9 +185,13 @@ export default function installCommands({
                 continue
             }
 
-            reservedResourcePoints.push(resourcePoint)
+            if (!resource.reserveStation(model, stationIndex)) {
+                console.warn('Cannot reserve a resource station for a movable model.')
+                continue
+            }
+            reservedResourceStations.add(stationIndex)
             reservedCenterPoints.push(centerPoint)
-            model.setShuttlePaths(shuttlePaths, resource)
+            model.setShuttlePaths(shuttlePaths, resource, stationIndex)
         }
     }
 
