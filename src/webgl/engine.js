@@ -60,9 +60,15 @@ class Engine {
 
         const shipModel = await MovableModel.create(gl)
         shipModel.position = [5, 0, 5]
+        shipModel.displayName = 'KOPARKA-01'
+        shipModel.displayRole = 'STATEK WYDOBYWCZY'
+        shipModel.displayClass = 'WYDOBYWCZA'
 
         const shipModel2 = await MovableModel.create(gl)
         shipModel2.position = [4, 0, 4]
+        shipModel2.displayName = 'TRANSPORT-02'
+        shipModel2.displayRole = 'STATEK TRANSPORTOWY'
+        shipModel2.displayClass = 'TRANSPORTOWA'
 
 
         const resourceModel = await ResourceModel.create(gl)
@@ -78,6 +84,10 @@ class Engine {
         //models.push(terrain)
 
         let selectedModels = []
+        const selectionPanel = document.getElementById('selectionPanel')
+        const selectionCount = document.getElementById('selectionCount')
+        const selectionThumbnails = document.getElementById('selectionThumbnails')
+        const selectionContent = document.getElementById('selectionContent')
 
 
         const modelsToSelect = []
@@ -182,7 +192,99 @@ class Engine {
                 model.oldMaterial = model.material
                 model.material = redMaterial
             }
+            updateSelectionPanel()
         }
+
+        function updateSelectionPanel() {
+            const count = selectedModels.length
+            selectionPanel.hidden = count === 0
+            const unitWord = count === 1
+                ? 'JEDNOSTKA'
+                : count >= 2 && count <= 4
+                ? 'JEDNOSTKI'
+                : 'JEDNOSTEK'
+            selectionCount.textContent = `${String(count).padStart(2, '0')} ${unitWord}`
+            selectionPanel.classList.toggle('is-collapsed', count > 1)
+            const thumbnailModels = selectedModels
+            selectionThumbnails.classList.toggle('has-units', thumbnailModels.length > 1)
+            selectionThumbnails.textContent = ''
+            selectionContent.textContent = ''
+
+            if (count === 0) {
+                const emptyMessage = document.createElement('p')
+                emptyMessage.className = 'selection-empty'
+                emptyMessage.textContent = 'BRAK ZAZNACZONYCH JEDNOSTEK'
+                selectionContent.appendChild(emptyMessage)
+                return
+            }
+
+            for (const [index, model] of thumbnailModels.entries()) {
+                const thumbnail = document.createElement('button')
+                thumbnail.type = 'button'
+                thumbnail.className = 'unit-thumbnail'
+                thumbnail.setAttribute('aria-label', `Wybierz jednostkę: ${model.displayName || 'jednostka'}`)
+                thumbnail.title = model.displayName || 'Jednostka'
+                thumbnail.addEventListener('click', () => {
+                    if (selectionPanel.classList.contains('is-collapsed')) {
+                        setSelectedModels([model])
+                    }
+                })
+                const silhouette = document.createElement('span')
+                silhouette.className = 'thumbnail-silhouette'
+                silhouette.setAttribute('aria-hidden', 'true')
+                const thumbnailIndex = document.createElement('span')
+                thumbnailIndex.className = 'thumbnail-index'
+                thumbnailIndex.textContent = String(index + 1).padStart(2, '0')
+                thumbnail.append(silhouette, thumbnailIndex)
+                selectionThumbnails.appendChild(thumbnail)
+            }
+
+            for (const model of selectedModels) {
+                const unit = document.createElement('article')
+                unit.className = 'selected-unit'
+
+                const glyph = document.createElement('div')
+                glyph.className = 'unit-glyph'
+                glyph.setAttribute('aria-hidden', 'true')
+
+                const identity = document.createElement('div')
+                identity.className = 'unit-identity'
+                const name = document.createElement('div')
+                name.className = 'unit-name'
+                name.textContent = model.displayName || 'JEDNOSTKA'
+                const role = document.createElement('div')
+                role.className = 'unit-role'
+                role.textContent = model.displayRole || 'JEDNOSTKA MOBILNA'
+                const status = document.createElement('div')
+                status.className = 'unit-status'
+                status.textContent = 'JEDNOSTKA POD KONTROLĄ'
+                identity.append(name, role, status)
+
+                const stats = document.createElement('div')
+                stats.className = 'unit-stats'
+                const values = [
+                    ['PRĘDKOŚĆ', `${model.speed.toFixed(1)} m/s`],
+                    ['PROMIEŃ KOLIZJI', `${model.collisionRadius.toFixed(2)} m`],
+                    ['KLASA', model.displayClass || 'MOBILNA'],
+                ]
+                for (const [label, value] of values) {
+                    const stat = document.createElement('div')
+                    const statLabel = document.createElement('div')
+                    statLabel.className = 'unit-stat-label'
+                    statLabel.textContent = label
+                    const statValue = document.createElement('div')
+                    statValue.className = 'unit-stat-value'
+                    statValue.textContent = value
+                    stat.append(statLabel, statValue)
+                    stats.appendChild(stat)
+                }
+
+                unit.append(glyph, identity, stats)
+                selectionContent.appendChild(unit)
+            }
+        }
+
+        setSelectedModels([shipModel])
 
         function getCanvasPixel(event) {
             const rect = canvas.getBoundingClientRect()
