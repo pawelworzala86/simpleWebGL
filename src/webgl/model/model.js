@@ -1,4 +1,5 @@
 import Scene from './../scene.js'
+import DefaultMaterial from './../material/defaultMaterial.js'
 
 const { mat4, vec3 } = glMatrix
 
@@ -6,15 +7,16 @@ export class Model extends Scene{
     constructor(gl){
         super(gl)
         this.position = vec3.create()
+        this.material = new DefaultMaterial(gl)
     }
 
-    render(uniforms, modelMatrix = mat4.create(), shader = null){
+    render(uniforms, modelMatrix = mat4.create(), material = this.material){
         const translation = mat4.create()
         mat4.fromTranslation(translation, this.position)
 
         const positionedMatrix = mat4.create()
         mat4.multiply(positionedMatrix, modelMatrix, translation)
-        super.render(uniforms, positionedMatrix, shader)
+        super.render(uniforms, positionedMatrix, material)
     }
 
     calculateBBox(){

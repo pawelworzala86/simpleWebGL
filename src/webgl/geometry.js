@@ -1,11 +1,11 @@
-import Shader from './shader.js'
+import DefaultMaterial from './material/defaultMaterial.js'
 import Mesh from './mesh.js'
 import Model from './model/model.js'
 
 export class Geometry {
     static async createBox(gl, size = 1.0, ModelClass = Model) {
         const model = new ModelClass(gl)
-        const shader = await Shader.create(gl, 'default')
+        const material = new DefaultMaterial(gl)
         const geometry = {
             position: [
                 -size, -size, -size, size, -size, -size,
@@ -23,9 +23,9 @@ export class Geometry {
             ],
         }
 
-        model.shader = shader
+        model.material = material
         model.geometry = geometry
-        model.childrens.push(await Mesh.create(gl, shader, geometry))
+        model.childrens.push(await Mesh.create(gl, material, geometry))
         model.calculateBBox()
 
         return model
@@ -37,7 +37,7 @@ export class Geometry {
         }
 
         const model = new Model(gl)
-        const shader = await Shader.create(gl, 'default')
+        const material = new DefaultMaterial(gl)
         const position = []
         const indices = []
 
@@ -68,9 +68,9 @@ export class Geometry {
             indices,
         }
 
-        model.shader = shader
+        model.material = material
         model.geometry = geometry
-        model.childrens.push(await Mesh.create(gl, shader, geometry, gl.LINES))
+        model.childrens.push(await Mesh.create(gl, material, geometry, gl.LINES))
         model.calculateBBox()
 
         return model

@@ -1,14 +1,12 @@
 import http from './../../http.js'
-import Shader from './../shader.js'
 import Mesh from './../mesh.js'
-import Scene from './../scene.js'
+import Model from './model.js'
+import DefaultMaterial from './../material/defaultMaterial.js'
 
-export class PanelModel extends Scene{
-    static async create(gl,geom,shaderName){
+export class PanelModel extends Model{
+    static async create(gl,geom){
         const model = new PanelModel(gl)
-
-        const shader = await Shader.create(gl,shaderName)
-        model.shader = shader
+        model.material = new DefaultMaterial(gl,'panel')
 
         const geometry = await http.get('/models/panel.json','json')
         let [x, y, width, height] = geom
@@ -20,7 +18,7 @@ export class PanelModel extends Scene{
         ]
         model.geometry = geometry
 
-        const mesh = await Mesh.create(gl,shader,geometry)
+        const mesh = await Mesh.create(gl,model.material,geometry)
         model.childrens.push(mesh)
 
         return model
