@@ -1,7 +1,8 @@
 import Geometry from './../../../webgl/geometry.js'
 import Model from './../model.js'
+import Mesh from './../../mesh.js'
 
-const { vec3 } = glMatrix
+const { mat4, vec3 } = glMatrix
 
 export class MovableModel extends Model{
     constructor(gl){
@@ -10,15 +11,35 @@ export class MovableModel extends Model{
         this.pathIndex = 0
         this.speed = 5
         this.collisionRadius = 0.22
+        this.rotationY = 0
+        this.turnSpeed = Math.PI * 2
     }
 
     static async create(gl){
         const model = await Geometry.createBox(gl,0.15,MovableModel)
         if (model.bbox) {
             const halfWidth = (model.bbox.max[0] - model.bbox.min[0]) / 2
-            const halfDepth = (model.bbox.max[2] - model.bbox.min[2]) / 2
+            const halfDepth = Math.max(
+                (model.bbox.max[2] - model.bbox.min[2]) / 2,
+                0.25
+            )
             model.collisionRadius = Math.hypot(halfWidth, halfDepth)
         }
+        model.childrens.push(await Mesh.create(gl, model.material, {
+            position: [
+                -0.07, -0.07, 0.1,
+                 0.07, -0.07, 0.1,
+                 0.07,  0.07, 0.1,
+                -0.07,  0.07, 0.1,
+                 0,     0,    0.25,
+            ],
+            indices: [
+                0, 1, 4,
+                1, 2, 4,
+                2, 3, 4,
+                3, 0, 4,
+            ],
+        }))
         return model
     }
 
@@ -63,17 +84,11 @@ export class MovableModel extends Model{
             const relativeZ = other.position[2] - state.position[2]
             const distance = Math.hypot(relativeX, relativeZ)
             const safeDistance = state.radius + other.radius + 0.08
-            const relativeVelocityX = other.velocity[0] - state.velocity[0]
-            const relativeVelocityZ = other.velocity[1] - state.velocity[1]
-            const isApproaching =
-                relativeX * relativeVelocityX + relativeZ * relativeVelocityZ < 0
-            const otherIsStationary = Math.hypot(other.velocity[0], other.velocity[1]) < 1e-8
             const stopDistance = safeDistance * 1.2
             const bothNearDestination =
                 state.distanceToDestination < stopDistance &&
                 other.distanceToDestination < stopDistance
-            if (distance < stopDistance &&
-                (bothNearDestination || (isApproaching && otherIsStationary))) {
+            if (distance < stopDistance && bothNearDestination) {
                 return { position: [...state.position], stop: true }
             }
         }
@@ -170,18 +185,31 @@ export class MovableModel extends Model{
         }
 
         const movementLength = Math.hypot(movementX, movementZ)
-        if (movementLength > 1e-8) {
-            movementX /= movementLength
-            movementZ /= movementLength
-        }
+        if (movementLength <= 1e-8) return { position: [...state.position] }
+        movementX /= movementLength
+        movementZ /= movementLength
+
+        const targetRotation = Math.atan2(movementX, movementZ)
+        const rotationDifference = Math.atan2(
+            Math.sin(targetRotation - this.rotationY),
+            Math.cos(targetRotation - this.rotationY)
+        )
+        const turnStep = this.turnSpeed * deltaTime
+        const rotationY = this.rotationY +
+            Math.sign(rotationDifference) * Math.min(Math.abs(rotationDifference), turnStep)
+        const turningInPlace = Math.abs(rotationDifference) > turnStep
 
         const step = avoidanceStrength > 0.05
             ? this.speed * deltaTime
             : Math.min(this.speed * deltaTime, distance)
-        const reachedTarget = avoidanceStrength <= 0.05 && distance <= step
+        const reachedTarget = !turningInPlace &&
+            avoidanceStrength <= 0.05 &&
+            distance <= step
 
         return {
-            position: reachedTarget
+            position: turningInPlace
+                ? [...state.position]
+                : reachedTarget
                 ? [...target]
                 : [
                     state.position[0] + movementX * step,
@@ -189,6 +217,7 @@ export class MovableModel extends Model{
                     state.position[2] + movementZ * step,
                 ],
             reachedTarget,
+            rotationY,
         }
     }
 
@@ -198,6 +227,10 @@ export class MovableModel extends Model{
             this.path = []
             this.pathIndex = 0
             return
+        }
+        if (Number.isFinite(plan.rotationY)) {
+            this.rotationY = plan.rotationY
+            mat4.fromYRotation(this.model, this.rotationY)
         }
         vec3.copy(this.position, plan.position)
         if (!plan.reachedTarget) return

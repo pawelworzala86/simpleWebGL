@@ -337,7 +337,11 @@ class Engine {
                     )
                 })
                 const candidatePaths = selectedModels.map((model, index) =>
-                    pathFinding.findPath(model.position, destinations[index], constModels)
+                    pathFinding.findPath(
+                        model.position,
+                        destinations[index],
+                        getPathfindingObstacles(model)
+                    )
                 )
                 if (candidatePaths.every((path) => path !== null)) {
                     paths = candidatePaths
@@ -347,12 +351,26 @@ class Engine {
             for (let i = 0; i < selectedModels.length; i++) {
                 const path = paths
                     ? paths[i]
-                    : pathFinding.findPath(selectedModels[i].position, point, constModels)
+                    : pathFinding.findPath(
+                        selectedModels[i].position,
+                        point,
+                        getPathfindingObstacles(selectedModels[i])
+                    )
                 selectedModels[i].setPath(path ? path.map(([x, z]) =>
                     vec3.fromValues(x, selectedModels[i].position[1], z)
                 ) : [])
             }
         })
+
+        function getPathfindingObstacles(model) {
+            const movingObstacles = modelsToSelect
+                .filter((other) => other !== model && !selectedModels.includes(other))
+                .map((other) => ({
+                    position: other.position,
+                    bbox: { min: [0, 0, 0], max: [0, 0, 0] },
+                }))
+            return [...constModels, ...movingObstacles]
+        }
 
         function resolveMovementCollisions(states, plans) {
             for (let i = 0; i < states.length; i++) {
