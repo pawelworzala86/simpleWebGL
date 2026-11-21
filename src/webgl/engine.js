@@ -1,5 +1,4 @@
-import ModelGLTF from './model/modelGLTF.js'
-import ModelJSON from './model/modelJSON.js'
+import DefaultMaterial from './material/defaultMaterial.js'
 import PanelModel from './model/panelModel.js'
 import StaticModel from './model/game/staticModel.js'
 import MovableModel from './model/game/movableModel.js'
@@ -31,8 +30,14 @@ class Engine {
     }
     async run(){
         const {gl, canvas} = this
-        //const boxModel = await ModelGLTF.create(gl,'box','default')
-        //const boxModel = await ModelJSON.create(gl,'box','default')
+        
+        
+
+        const redMaterial = new DefaultMaterial(gl)
+        redMaterial.uniforms.color = [1.0, 0.0, 0.0]
+
+
+
 
         const panelModel = await PanelModel.create(gl,[-1.0, -1.0, 1.0, 1.0],'panel')
 
@@ -167,6 +172,7 @@ class Engine {
                 selectedModel = null
                 if (modelsToSelect.includes(hit.model)) {
                     selectedModel = hit.model;
+                    selectedModel.material = redMaterial
                 }
             } else {
                 console.log("Kliknięto w tło");

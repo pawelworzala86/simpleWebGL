@@ -77,7 +77,7 @@ export class Mesh extends Scene{
         let uniforms = Object.assign(parentUniforms,{
             model: matrix,
         })
-        uniforms = Object.assign(material.uniforms,uniforms)
+        uniforms = Object.assign(uniforms,material.uniforms)
         Uniform.set(gl,shader,uniforms)
 
 

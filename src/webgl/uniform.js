@@ -9,6 +9,10 @@ export class Uniform{
                     gl.uniform1i(location, value)
                 }else if(value.length==16){
                     gl.uniformMatrix4fv(location, false, value)
+                }else if(value.length==3){
+                    gl.uniform3fv(location, value)
+                }else if(value.length==4){
+                    gl.uniform4fv(location, value)
                 }else if(value.constructor.name==="WebGLTexture"){
                     gl.activeTexture(gl.TEXTURE0);
                     gl.bindTexture(gl.TEXTURE_2D, value);
