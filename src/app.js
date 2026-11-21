@@ -5,7 +5,7 @@ import RenderBuffer from './webgl/renderBuffer.js'
 import FPSCamera from './webgl/camera/fps.js';
 import RTSCamera from './webgl/camera/rts.js';
 import Intersect from './webgl/intersect.js'
-
+import Controls from './webgl/controls.js';
 
 const { mat4 } = glMatrix
 
@@ -44,66 +44,12 @@ let deltaTime = 0
 let projection = mat4.create();
 mat4.perspectiveNO(projection, 45, canvas.width/canvas.height, 1, 100)
 
-//let camera = mat4.create();
-//mat4.translate(camera, camera, [0, 0, -6])
-const camera = new RTSCamera(); // Startowa pozycja (np. wysokość oczu człowieka = 1.7)
-//let deltaTime = 0.016; // Szacowany czas klatki (delta time)
 
-// 1. Aktywacja sterowania myszką po kliknięciu w canvas
-/*canvas.addEventListener('click', () => {
-    canvas.requestPointerLock();
-});
 
-document.addEventListener('mousemove', (e) => {
-    if (document.pointerLockElement === canvas) {
-        camera.processMouseMovement(e.movementX, e.movementY);
-    }
-});
 
-// 2. Śledzenie wciśniętych klawiszy
-const keys = {};
-window.addEventListener('keydown', (e) => keys[e.code] = true);
-window.addEventListener('keyup', (e) => keys[e.code] = false);
+const camera = new RTSCamera();
 
-function processInput(dt) {
-    if (keys['KeyW']) camera.processKeyboard('FORWARD', dt);
-    if (keys['KeyS']) camera.processKeyboard('BACKWARD', dt);
-    if (keys['KeyA']) camera.processKeyboard('LEFT', dt);
-    if (keys['KeyD']) camera.processKeyboard('RIGHT', dt);
-}*/
-
-let isRotating = false;
-
-// Klawiatura (w pętli renderowania przekazuj deltaTime)
-window.addEventListener('keydown', (e) => {
-    if (e.key === 'w' || e.key === 'W') camera.processKeyboard('FORWARD', deltaTime);
-    if (e.key === 's' || e.key === 'S') camera.processKeyboard('BACKWARD', deltaTime);
-    if (e.key === 'a' || e.key === 'A') camera.processKeyboard('LEFT', deltaTime);
-    if (e.key === 'd' || e.key === 'D') camera.processKeyboard('RIGHT', deltaTime);
-});
-
-// Myszy - Obrót (Prawy przycisk myszy)
-canvas.addEventListener('mousedown', (e) => {
-    if (e.button === 2) isRotating = true; // Prawy przycisk
-});
-
-canvas.addEventListener('mouseup', (e) => {
-    if (e.button === 2) isRotating = false;
-});
-
-canvas.addEventListener('mousemove', (e) => {
-    if (isRotating) {
-        camera.processMouseOrbit(e.movementX, -e.movementY);
-    }
-});
-
-// Zoom (Scroll)
-canvas.addEventListener('wheel', (e) => {
-    camera.processMouseScroll(e.deltaY);
-}, { passive: true });
-
-// Blokada menu kontekstowego po kliknięciu prawym klawiszem
-canvas.addEventListener('contextmenu', e => e.preventDefault());
+const controls = new Controls(canvas, camera); 
 
 
 
@@ -163,12 +109,12 @@ let lastTime = 0
 
 function animate(time){
     //console.log(time)
-    deltaTime = (time-lastTime)/1000
+    deltaTime = Math.min((time-lastTime)/1000, 0.05)
     lastTime = time
 
     frame++
 
-    //processInput(deltaTime);
+    controls.processInput(deltaTime);
 
     const viewMatrix = camera.getViewMatrix();
 
