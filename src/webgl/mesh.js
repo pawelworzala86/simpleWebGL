@@ -4,10 +4,12 @@ import Scene from './scene.js'
 const { mat4 } = glMatrix
 
 export class Mesh extends Scene{
-    static async create(gl,shader,geometry){
+    static async create(gl,shader,geometry,primitiveType=gl.TRIANGLES){
         const mesh = new Mesh(gl)
         mesh.shader = shader
         mesh.geometry = geometry
+
+        mesh.type = primitiveType
 
         mesh.buffer = {}
 
@@ -67,7 +69,7 @@ export class Mesh extends Scene{
         gl.bindVertexArray(this.vao)
         
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffer.indices);
-        gl.drawElements(gl.TRIANGLES, this.geometry.indices.length, gl.UNSIGNED_SHORT, 0);
+        gl.drawElements(this.type, this.geometry.indices.length, gl.UNSIGNED_SHORT, 0);
     }
 }
 

@@ -27,7 +27,7 @@ const panelModel = await PanelModel.create(gl,[-1.0, -1.0, 1.0, 1.0],'panel')
 
 
 
-const ground = await Geometry.createGround(gl,10)
+const ground = await Geometry.createGround(gl,10,20)
 
 
 const models = []
