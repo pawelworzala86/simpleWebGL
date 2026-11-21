@@ -1,10 +1,6 @@
 import http from './../../../http.js'
-import Mesh from './../../mesh.js'
 
 export class GLTFloader{
-    constructor(){
-
-    }
     static async load(gl,fileName){
         const gltf = await http.get('/models/'+fileName,'json')
 
@@ -26,47 +22,36 @@ export class GLTFloader{
                 target:buffer.target
             }
         })
-        //{buffer: 0, byteLength: 288, byteOffset: 0, target: 34962}
-        //const floats = new Float32Array(ab, offset, count);
 
         gltf.meshes = gltf.meshes.map(meshData=>{
-            const meshDatasets = {}
-            meshData.primitives.map(primitive=>{
-                console.log('primitive',primitive)
+            return meshData.primitives.map(primitive=>{
+                const geometry = {}
                 for(const key of Object.keys(primitive.attributes)){
                     const accessor = gltf.accessors[primitive.attributes[key]]
-                    console.log(accessor)
                     const data = gltf.bufferViews[accessor.bufferView]
-                    const type = accessor.type
-                    const count = accessor.count
-                    meshDatasets[key.toLocaleLowerCase()] = {data,type,count}
+                    geometry[key.toLocaleLowerCase()] = data.data
                 }
-                const accessor = gltf.accessors[primitive.indices]
-                console.log(accessor)
-                const data = gltf.bufferViews[accessor.bufferView]
-                const type = accessor.type
-                const count = accessor.count
-                meshDatasets['indices'] = {data,type,count}
+                if(primitive.indices !== undefined){
+                    const accessor = gltf.accessors[primitive.indices]
+                    const data = gltf.bufferViews[accessor.bufferView]
+                    geometry.indices = data.data
+                }
+                return {
+                    geometry,
+                    material: primitive.material,
+                    mode: primitive.mode
+                }
             })
-            console.log(meshDatasets)
-            return meshDatasets 
         })
 
-        console.log(gltf)
-
-        gltf.meshes = gltf.meshes.map(mesh=>{
-            let m = {}
-            for(const key of Object.keys(mesh)){
-                m[key] = mesh[key].data.data
-            }
-            return m
-        })
-
-        gltf.materials = gltf.materials.map(material=>{
-            const pbrMetallicRoughness = material.pbrMetallicRoughness
+        gltf.materials = (gltf.materials || []).map(material=>{
+            const pbrMetallicRoughness = material.pbrMetallicRoughness || {}
             let texture = null
-            if(pbrMetallicRoughness.baseColorTexture && pbrMetallicRoughness.baseColorTexture.index !== undefined){
-               texture = gltf.images[pbrMetallicRoughness.baseColorTexture.index].uri
+            const textureInfo = pbrMetallicRoughness.baseColorTexture
+            if(textureInfo && textureInfo.index !== undefined){
+                const textureData = gltf.textures[textureInfo.index]
+                const image = textureData && gltf.images[textureData.source]
+                texture = image && image.uri
             }
             return {
                 baseColorTexture: texture
