@@ -1,5 +1,5 @@
 export class PathFinding {
-    constructor(cellSize = 0.5, clearance = 0.2) {
+    constructor(cellSize = 0.5, clearance = 0.05) {
         if (!Number.isFinite(cellSize) || cellSize <= 0) {
             throw new RangeError('Pathfinding cell size must be greater than zero')
         }

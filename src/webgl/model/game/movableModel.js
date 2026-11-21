@@ -1,5 +1,4 @@
 import ModelGLTF from './../../../webgl/model/modelGLTF.js'
-import Mesh from './../../mesh.js'
 
 const { mat4, vec3 } = glMatrix
 
