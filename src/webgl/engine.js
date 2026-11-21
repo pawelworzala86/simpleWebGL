@@ -1,6 +1,6 @@
 import DefaultMaterial from './material/defaultMaterial.js'
 import PanelModel from './model/panelModel.js'
-import ModelGLTF from './model/modelGLTF.js'
+import Terrain from './model/terrain.js'
 import MovableModel from './model/game/movableModel.js'
 import ResourceModel from './model/game/resourceModel.js'
 import CenterModel from './model/game/centerModel.js'
@@ -73,6 +73,12 @@ class Engine {
         //modelGLTF.position = [-2, 0, -5]
         //models.push(modelGLTF)
 
+        /*const terrain = await Terrain.create(gl, 10, 40)
+        terrain.position = [-20, 0, -20]
+        models.push(terrain)*/
+
+
+
         const pathFinding = new PathFinding()
         const renderBuffer = new RenderBuffer(gl, canvas.width, canvas.height)
 
@@ -137,6 +143,7 @@ class Engine {
             controls.processInput(deltaTime)
             updateMovements(models, deltaTime, centerModel, rootStats)
             camera.updateFollow(deltaTime)
+            terrain.updateLOD(camera.position)
 
             const viewMatrix = camera.getViewMatrix()
 
