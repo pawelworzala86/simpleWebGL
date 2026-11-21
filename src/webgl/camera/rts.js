@@ -30,7 +30,7 @@ export class RTSCamera {
         // Parametry prędkości i czułości
         this.movementSpeed = 12.0;
         this.mouseSensitivity = 0.15;
-        this.zoomSensitivity = 0.01;
+        this.zoomSensitivity = 0.001;
 
         this.updateCameraVectors();
     }
@@ -87,11 +87,10 @@ export class RTSCamera {
 
     // Zooming (Scroll myszy)
     processMouseScroll(yoffset) {
-        this.distance += yoffset * this.zoomSensitivity * this.distance;
+        this.distance *= Math.exp(yoffset * this.zoomSensitivity);
         
         // Ograniczenia zooma
-        if (this.distance < this.minDistance) this.distance = this.minDistance;
-        if (this.distance > this.maxDistance) this.distance = this.maxDistance;
+        this.distance = Math.max(this.minDistance, Math.min(this.maxDistance, this.distance));
 
         this.updatePositionFromTarget();
     }
