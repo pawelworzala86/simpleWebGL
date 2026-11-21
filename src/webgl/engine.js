@@ -336,11 +336,6 @@ class Engine {
             const [pixelX, pixelY] = getCanvasPixel(event)
 
             const hit = intersect.get(pixelX, pixelY, projection, camera.getViewMatrix());
-            if (hit && hit.model instanceof ResourceModel && selectedModels.length > 0) {
-                sendSelectedModelsToResource(hit.model)
-                return
-            }
-
             setSelectedModels(hit && modelsToSelect.includes(hit.model) ? [hit.model] : [])
         })
 
