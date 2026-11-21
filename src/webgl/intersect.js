@@ -108,7 +108,7 @@ export class Intersect {
         return model
     }
 
-    getIdAt(x, y, projection, viewMatrix) {
+    get(x, y, projection, viewMatrix) {
         if (this.mode !== 'MESH' && this.mode !== 'BBOX') {
             throw new RangeError(`Unsupported intersection mode: ${this.mode}`)
         }
@@ -142,6 +142,7 @@ export class Intersect {
 
         let closestModel = null
         let closestDistance = maxDistance
+        let closestPoint = null
 
         const identity = mat4.create()
         const testGeometry = (geometry, modelMatrix, owner) => {
@@ -155,6 +156,8 @@ export class Intersect {
             if (distance !== null && distance < closestDistance) {
                 closestDistance = distance
                 closestModel = owner
+                closestPoint = vec3.create()
+                vec3.scaleAndAdd(closestPoint, origin, direction, distance)
             }
         }
 
@@ -185,7 +188,7 @@ export class Intersect {
             }
         }
 
-        return closestModel
+        return closestModel ? { model: closestModel, point: closestPoint } : null
     }
 }
 

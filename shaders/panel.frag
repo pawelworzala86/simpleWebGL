@@ -18,5 +18,5 @@ float noise2f(vec2 p) {
 void main(void) {
     vec4 color = texture(tex, uv);
     float noise = noise2f(uv*float(frame));
-    outColor = vec4(color.rbg-vec3(noise)*0.1,1.0);//color-(noise*0.05);
+    outColor = vec4(color.rbg-vec3(noise)*0.07,1.0);//color-(noise*0.05);
 }

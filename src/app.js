@@ -90,6 +90,7 @@ function setScene(targetBuffer) {
 const intersect = new Intersect(canvas.width, canvas.height)
 intersect.mode = 'BBOX'
 intersect.addModel(boxModel)
+intersect.addModel(ground)
 
 canvas.addEventListener('click', (event) => {
     const rect = canvas.getBoundingClientRect();
@@ -99,9 +100,9 @@ canvas.addEventListener('click', (event) => {
     const pixelX = mouseX * (canvas.width / canvas.clientWidth);
     const pixelY = canvas.height - (mouseY * (canvas.height / canvas.clientHeight)) - 1;
 
-    const model = intersect.getIdAt(pixelX, pixelY, projection, camera.getViewMatrix());
-    if (model !== null) {
-        console.log("Kliknięto model:", model);
+    const hit = intersect.get(pixelX, pixelY, projection, camera.getViewMatrix());
+    if (hit !== null) {
+        console.log("Kliknięto model:", hit.model, "w punkcie:", hit.point);
     } else {
         console.log("Kliknięto w tło");
     }
