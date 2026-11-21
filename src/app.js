@@ -4,7 +4,7 @@ import PanelModel from './webgl/model/panelModel.js'
 import RenderBuffer from './webgl/renderBuffer.js'
 import FPSCamera from './webgl/camera/fps.js';
 import RTSCamera from './webgl/camera/rts.js';
-import Shader from './webgl/shader.js'
+import Intersect from './webgl/intersect.js'
 
 
 const { mat4 } = glMatrix
@@ -14,11 +14,6 @@ const { mat4 } = glMatrix
 var canvas = document.getElementById('my_Canvas')
 const gl = canvas.getContext('webgl2')
 
-
-
-
-
-const pickShader = await Shader.create(gl,'pick')
 
 
 
@@ -39,8 +34,6 @@ const panelModel = await PanelModel.create(gl,[-1.0, -1.0, 1.0, 1.0],'panel')
 
 
 
-
-const pickBuffer = new RenderBuffer(gl,canvas.width,canvas.height)
 
 const renderBuffer = new RenderBuffer(gl,canvas.width,canvas.height)
 
@@ -116,29 +109,7 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 
 
-canvas.addEventListener('click', (event) => {
-    const rect = canvas.getBoundingClientRect();
 
-    // Pozycja myszy w pikselach *wewnątrz* elementu canvas
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
-
-    const pixelX = mouseX * (canvas.width / canvas.clientWidth);
-    // WebGL ma odwróconą oś Y w porównaniu do zdarzeń DOM myszy
-    const pixelY = canvas.height - (mouseY * (canvas.height / canvas.clientHeight)) - 1;
-
-    const data = new Uint8Array(4);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, pickBuffer.fbo);
-    gl.readPixels(pixelX, pixelY, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, data);
-
-    // Odtwórz ID z kanałów R, G, B
-    const id = data[0] + (data[1] << 8) + (data[2] << 16);
-    if (id > 0) {
-        console.log("Kliknięto obiekt o ID:", id - 1);
-    } else {
-        console.log("Kliknięto w tło");
-    }
-})
 
 
 function setScene(targetBuffer) {
@@ -160,6 +131,32 @@ function setScene(targetBuffer) {
 }
 
 
+
+
+
+const intersect = new Intersect(canvas.width, canvas.height)
+intersect.addModel(boxModel)
+
+canvas.addEventListener('click', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
+    const pixelX = mouseX * (canvas.width / canvas.clientWidth);
+    const pixelY = canvas.height - (mouseY * (canvas.height / canvas.clientHeight)) - 1;
+
+    const model = intersect.getIdAt(pixelX, pixelY, projection, camera.getViewMatrix());
+    if (model !== null) {
+        console.log("Kliknięto model:", model);
+    } else {
+        console.log("Kliknięto w tło");
+    }
+})
+
+
+
+
+
 let frame = 0
 let lastTime = 0
 
@@ -173,19 +170,6 @@ function animate(time){
     //processInput(deltaTime);
 
     const viewMatrix = camera.getViewMatrix();
-
-    {
-        setScene(pickBuffer)
-
-        const uniforms = {
-            projection: projection,
-            camera: viewMatrix,
-            frame: frame,
-            u_id: [1,0,0,255]
-        }
-
-        boxModel.render(uniforms,mat4.create(),pickShader)
-    }
 
     {
         setScene(renderBuffer)
