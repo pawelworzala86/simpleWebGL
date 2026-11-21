@@ -13,6 +13,10 @@ export class MovableModel extends Model{
         this.collisionRadius = 0.22
         this.rotationY = 0
         this.turnSpeed = Math.PI * 2
+        this.shuttlePaths = null
+        this.shuttleLegIndex = 0
+        this.shuttlePauseDuration = 0
+        this.shuttlePauseRemaining = 0
     }
 
     static async create(gl){
@@ -44,7 +48,18 @@ export class MovableModel extends Model{
     }
 
     setPath(path){
+        this.shuttlePaths = null
+        this.shuttlePauseRemaining = 0
         this.path = path
+        this.pathIndex = 0
+    }
+
+    setShuttlePaths(paths, pauseDuration = 2){
+        this.shuttlePaths = paths
+        this.shuttleLegIndex = 0
+        this.shuttlePauseDuration = pauseDuration
+        this.shuttlePauseRemaining = 0
+        this.path = paths[0]
         this.pathIndex = 0
     }
 
@@ -53,7 +68,7 @@ export class MovableModel extends Model{
         const velocity = [0, 0]
         const target = this.path[this.pathIndex]
         const destination = this.path[this.path.length - 1]
-        if (target) {
+        if (target && this.shuttlePauseRemaining <= 0) {
             const directionX = target[0] - position[0]
             const directionZ = target[2] - position[2]
             const distance = Math.hypot(directionX, directionZ)
@@ -76,6 +91,7 @@ export class MovableModel extends Model{
     }
 
     getMovementPlan(deltaTime, states, state){
+        if (this.shuttlePauseRemaining > 0) return null
         if (this.pathIndex >= this.path.length || deltaTime <= 0) return null
 
         for (const other of states) {
@@ -88,7 +104,7 @@ export class MovableModel extends Model{
             const bothNearDestination =
                 state.distanceToDestination < stopDistance &&
                 other.distanceToDestination < stopDistance
-            if (distance < stopDistance && bothNearDestination) {
+            if (!this.shuttlePaths && distance < stopDistance && bothNearDestination) {
                 return { position: [...state.position], stop: true }
             }
         }
@@ -221,11 +237,16 @@ export class MovableModel extends Model{
         }
     }
 
-    applyMovementPlan(plan){
+    applyMovementPlan(plan, deltaTime = 0){
+        if (this.shuttlePauseRemaining > 0) {
+            this.shuttlePauseRemaining = Math.max(0, this.shuttlePauseRemaining - deltaTime)
+            return
+        }
         if (!plan) return
         if (plan.stop) {
             this.path = []
             this.pathIndex = 0
+            this.shuttlePaths = null
             return
         }
         if (Number.isFinite(plan.rotationY)) {
@@ -237,6 +258,17 @@ export class MovableModel extends Model{
 
         this.pathIndex++
         if (this.pathIndex >= this.path.length) {
+            if (this.shuttlePaths) {
+                const completedLeg = this.shuttleLegIndex
+                this.shuttleLegIndex = (this.shuttleLegIndex + 1) % this.shuttlePaths.length
+                this.path = this.shuttlePaths[this.shuttleLegIndex]
+                this.pathIndex = 0
+                if (completedLeg === 0 || completedLeg === this.shuttlePaths.length - 1) {
+                    this.shuttlePauseRemaining = this.shuttlePauseDuration
+                }
+                return
+            }
+
             this.path = []
             this.pathIndex = 0
         }
@@ -244,7 +276,7 @@ export class MovableModel extends Model{
 
     update(deltaTime){
         const state = this.getMovementState(0)
-        this.applyMovementPlan(this.getMovementPlan(deltaTime, [state], state))
+        this.applyMovementPlan(this.getMovementPlan(deltaTime, [state], state), deltaTime)
     }
 }
 
