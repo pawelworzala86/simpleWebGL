@@ -62,6 +62,13 @@ export class GLTFloader{
             return m
         })
 
+        gltf.materials = gltf.materials.map(material=>{
+            const pbrMetallicRoughness = material.pbrMetallicRoughness
+            return {
+                baseColorTexture: gltf.images[pbrMetallicRoughness.baseColorTexture.index].uri
+            }
+        })
+
         return gltf
     }
 }

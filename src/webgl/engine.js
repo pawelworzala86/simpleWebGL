@@ -1,7 +1,7 @@
 import DefaultMaterial from './material/defaultMaterial.js'
 
 import PanelModel from './model/panelModel.js'
-import StaticModel from './model/game/staticModel.js'
+import ModelGLTF from './model/modelGLTF.js'
 import MovableModel from './model/game/movableModel.js'
 import ResourceModel from './model/game/resourceModel.js'
 import CenterModel from './model/game/centerModel.js'
@@ -103,6 +103,18 @@ class Engine {
 
         const resourceModels = []
         resourceModels.push(resourceModel)
+
+
+
+
+
+
+
+        const modelGLTF = await ModelGLTF.create(gl,'box')
+        modelGLTF.position = [-2, 0, -5]
+        models.push(modelGLTF)
+
+
 
 
 

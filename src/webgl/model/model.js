@@ -10,13 +10,13 @@ export class Model extends Scene{
         this.material = new DefaultMaterial(gl)
     }
 
-    render(uniforms, modelMatrix = mat4.create(), material = this.material){
+    render(uniforms, modelMatrix = mat4.create()){
         const translation = mat4.create()
         mat4.fromTranslation(translation, this.position)
 
         const positionedMatrix = mat4.create()
         mat4.multiply(positionedMatrix, modelMatrix, translation)
-        super.render(uniforms, positionedMatrix, material)
+        super.render(uniforms, positionedMatrix)
     }
 
     calculateBBox(){

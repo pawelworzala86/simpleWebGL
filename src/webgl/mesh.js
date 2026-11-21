@@ -34,7 +34,7 @@ export class Mesh extends Scene{
 
         return mesh
     }
-    render(parentUniforms,modelMatrix=mat4.create(),material=null){
+    render(parentUniforms,modelMatrix=mat4.create()){
         const { gl } = this
 
         if(!(this.material.shader&&this.material.shader.program)){
@@ -61,11 +61,11 @@ export class Mesh extends Scene{
             gl.bindVertexArray(null)
         }
 
-        const shader = material && material.shader
-            ? material.shader
-            : material && material.program
-                ? material
-                : this.material.shader
+        const shader = this.material && this.material.shader
+            ? this.material.shader
+            : this.material && this.material.program
+                ? this.material
+                : null
         if (!shader) throw new Error('Mesh requires a material with a shader')
 
         gl.useProgram(shader.program)
@@ -77,7 +77,7 @@ export class Mesh extends Scene{
         let uniforms = Object.assign(parentUniforms,{
             model: matrix,
         })
-        uniforms = Object.assign(uniforms,material.uniforms)
+        uniforms = Object.assign(uniforms,this.material.uniforms)
         Uniform.set(gl,shader,uniforms)
 
 
