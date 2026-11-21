@@ -143,7 +143,7 @@ class Engine {
             controls.processInput(deltaTime)
             updateMovements(models, deltaTime, centerModel, rootStats)
             camera.updateFollow(deltaTime)
-            terrain.updateLOD(camera.position)
+            //terrain.updateLOD(camera.position)
 
             const viewMatrix = camera.getViewMatrix()
 
