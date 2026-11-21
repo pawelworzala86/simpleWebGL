@@ -19,7 +19,8 @@ import PathFinding from './pathFinding.js'
 const { mat4, vec3, vec4 } = glMatrix
 
 class Engine {
-    constructor(canvas) {
+    constructor(rootStats) {
+        this.rootStats = rootStats;
         var canvas = document.createElement('canvas')
         canvas.width = window.innerWidth*0.95
         canvas.height = window.innerHeight*0.95
@@ -35,7 +36,7 @@ class Engine {
         this.cameras = [];
     }
     async run(){
-        const {gl, canvas} = this
+        const {gl, canvas, rootStats} = this
         
         
 
@@ -554,7 +555,7 @@ class Engine {
 
                 reservedResourcePoints.push(resourcePoint)
                 reservedCenterPoints.push(centerPoint)
-                model.setShuttlePaths(shuttlePaths, 2)
+                model.setShuttlePaths(shuttlePaths, resource)
             }
         }
 
@@ -718,7 +719,15 @@ class Engine {
             )
             resolveMovementCollisions(movementStates, movementPlans)
             for (let i = 0; i < movementStates.length; i++) {
-                movementStates[i].model.applyMovementPlan(movementPlans[i], deltaTime)
+                const model = movementStates[i].model
+                const completedLeg = model.applyMovementPlan(
+                    movementPlans[i],
+                    deltaTime
+                )
+                if (completedLeg === 1) {
+                    const resources = model.takeGatheredResources()
+                    if (resources) centerModel.receiveResources(resources, rootStats)
+                }
             }
 
             const viewMatrix = camera.getViewMatrix();

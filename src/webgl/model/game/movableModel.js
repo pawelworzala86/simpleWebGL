@@ -15,8 +15,10 @@ export class MovableModel extends Model{
         this.turnSpeed = Math.PI * 2
         this.shuttlePaths = null
         this.shuttleLegIndex = 0
-        this.shuttlePauseDuration = 0
-        this.shuttlePauseRemaining = 0
+        this.resourceModel = null
+        this.isGathering = false
+        this.gatheredResources = null
+        this.gatherRequestId = 0
     }
 
     static async create(gl){
@@ -48,19 +50,50 @@ export class MovableModel extends Model{
     }
 
     setPath(path){
+        this.gatherRequestId++
         this.shuttlePaths = null
-        this.shuttlePauseRemaining = 0
+        this.resourceModel = null
+        this.isGathering = false
+        this.gatheredResources = null
         this.path = path
         this.pathIndex = 0
     }
 
-    setShuttlePaths(paths, pauseDuration = 2){
+    setShuttlePaths(paths, resourceModel){
+        this.gatherRequestId++
         this.shuttlePaths = paths
         this.shuttleLegIndex = 0
-        this.shuttlePauseDuration = pauseDuration
-        this.shuttlePauseRemaining = 0
+        this.resourceModel = resourceModel
+        this.isGathering = false
+        this.gatheredResources = null
         this.path = paths[0]
         this.pathIndex = 0
+    }
+
+    gatherResources(){
+        const requestId = ++this.gatherRequestId
+        this.isGathering = true
+        Promise.resolve()
+            .then(() => this.resourceModel.gather())
+            .then((resources) => {
+                if (requestId !== this.gatherRequestId) return
+                this.gatheredResources = resources
+                this.isGathering = false
+            })
+            .catch((error) => {
+                if (requestId !== this.gatherRequestId) return
+                this.isGathering = false
+                this.path = []
+                this.pathIndex = 0
+                this.shuttlePaths = null
+                console.error('Failed to gather resources:', error)
+            })
+    }
+
+    takeGatheredResources(){
+        const resources = this.gatheredResources
+        this.gatheredResources = null
+        return resources
     }
 
     getMovementState(index){
@@ -68,7 +101,7 @@ export class MovableModel extends Model{
         const velocity = [0, 0]
         const target = this.path[this.pathIndex]
         const destination = this.path[this.path.length - 1]
-        if (target && this.shuttlePauseRemaining <= 0) {
+        if (target && !this.isGathering) {
             const directionX = target[0] - position[0]
             const directionZ = target[2] - position[2]
             const distance = Math.hypot(directionX, directionZ)
@@ -91,7 +124,7 @@ export class MovableModel extends Model{
     }
 
     getMovementPlan(deltaTime, states, state){
-        if (this.shuttlePauseRemaining > 0) return null
+        if (this.isGathering) return null
         if (this.pathIndex >= this.path.length || deltaTime <= 0) return null
 
         for (const other of states) {
@@ -238,10 +271,6 @@ export class MovableModel extends Model{
     }
 
     applyMovementPlan(plan, deltaTime = 0){
-        if (this.shuttlePauseRemaining > 0) {
-            this.shuttlePauseRemaining = Math.max(0, this.shuttlePauseRemaining - deltaTime)
-            return
-        }
         if (!plan) return
         if (plan.stop) {
             this.path = []
@@ -260,13 +289,15 @@ export class MovableModel extends Model{
         if (this.pathIndex >= this.path.length) {
             if (this.shuttlePaths) {
                 const completedLeg = this.shuttleLegIndex
-                this.shuttleLegIndex = (this.shuttleLegIndex + 1) % this.shuttlePaths.length
+                this.shuttleLegIndex = completedLeg === this.shuttlePaths.length - 1
+                    ? 1
+                    : completedLeg + 1
                 this.path = this.shuttlePaths[this.shuttleLegIndex]
                 this.pathIndex = 0
                 if (completedLeg === 0 || completedLeg === this.shuttlePaths.length - 1) {
-                    this.shuttlePauseRemaining = this.shuttlePauseDuration
+                    this.gatherResources()
                 }
-                return
+                return completedLeg
             }
 
             this.path = []
