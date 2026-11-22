@@ -2,7 +2,94 @@ import ModelGLTF from './../../../webgl/model/modelGLTF.js'
 
 const { mat4, vec3 } = glMatrix
 
+function getAvoidanceMovement(model, state, states, desiredX, desiredZ){
+    let movementX = desiredX
+    let movementZ = desiredZ
+    let avoidanceStrength = 0
+    const horizon = 2
+
+    for (const other of states) {
+        if (other.model === model) continue
+
+        const relativeX = other.position[0] - state.position[0]
+        const relativeZ = other.position[2] - state.position[2]
+        const currentDistance = Math.hypot(relativeX, relativeZ)
+        const safeDistance = state.radius + other.radius + 0.08
+        const relativeVelocityX = other.velocity[0] - state.velocity[0]
+        const relativeVelocityZ = other.velocity[1] - state.velocity[1]
+        const relativeSpeedSquared =
+            relativeVelocityX * relativeVelocityX +
+            relativeVelocityZ * relativeVelocityZ
+
+        let closestTime = 0
+        let closestDistance = currentDistance
+        if (relativeSpeedSquared > 1e-8) {
+            closestTime = Math.max(0, Math.min(
+                horizon,
+                -(relativeX * relativeVelocityX + relativeZ * relativeVelocityZ) /
+                    relativeSpeedSquared
+            ))
+            closestDistance = Math.hypot(
+                relativeX + relativeVelocityX * closestTime,
+                relativeZ + relativeVelocityZ * closestTime
+            )
+        }
+
+        if (closestDistance < safeDistance && closestTime > 0) {
+            const first = state.index < other.index ? state : other
+            const second = first === state ? other : state
+            let pairVelocityX = second.velocity[0] - first.velocity[0]
+            let pairVelocityZ = second.velocity[1] - first.velocity[1]
+            let pairSpeed = Math.hypot(pairVelocityX, pairVelocityZ)
+
+            if (pairSpeed < 1e-8) {
+                pairVelocityX = second.position[0] - first.position[0]
+                pairVelocityZ = second.position[2] - first.position[2]
+                pairSpeed = Math.hypot(pairVelocityX, pairVelocityZ)
+            }
+
+            if (pairSpeed < 1e-8) {
+                pairVelocityX = 1
+                pairVelocityZ = 0
+                pairSpeed = 1
+            }
+
+            const sideX = -pairVelocityZ / pairSpeed
+            const sideZ = pairVelocityX / pairSpeed
+            const sideSign = state === first ? 1 : -1
+            const urgency = (safeDistance - closestDistance) / safeDistance
+            const timing = 1 - closestTime / horizon
+            const strength = urgency * (0.6 + timing)
+            movementX += sideX * sideSign * strength * model.speed
+            movementZ += sideZ * sideSign * strength * model.speed
+            avoidanceStrength += strength
+        }
+
+        if (currentDistance < safeDistance) {
+            let awayX = state.position[0] - other.position[0]
+            let awayZ = state.position[2] - other.position[2]
+            if (currentDistance < 1e-8) {
+                awayX = state.index < other.index ? -1 : 1
+                awayZ = 0
+            } else {
+                awayX /= currentDistance
+                awayZ /= currentDistance
+            }
+
+            const strength = (safeDistance - currentDistance) / safeDistance * 2
+            movementX += awayX * strength * model.speed
+            movementZ += awayZ * strength * model.speed
+            avoidanceStrength += strength
+        }
+    }
+
+    return { movementX, movementZ, avoidanceStrength }
+}
+
 export class MovableModel extends ModelGLTF{
+    static modelName = 'ship'
+    static modelScale = 0.15
+
     constructor(gl){
         super(gl,'box')
         this.path = []
@@ -25,38 +112,33 @@ export class MovableModel extends ModelGLTF{
         this.isPlayerControlled = false
     }
 
-    static async create(gl,name='ship',scale=0.15){
+    static async create(gl,name=this.modelName,scale=this.modelScale){
         const model = await super.create(gl,name)
         model.scale = scale
-        //const model = await MovableModel.create(gl,'box')
-        //const model = await Geometry.createBox(gl,0.15,MovableModel)
-        if (model.bbox) {
-            const halfWidth = Math.max(
-                Math.abs(model.bbox.min[0]),
-                Math.abs(model.bbox.max[0])
-            )
-            const halfDepth = Math.max(
-                Math.abs(model.bbox.min[2]),
-                Math.abs(model.bbox.max[2])
-            )
-            model.collisionRadius = Math.max(0.05, Math.hypot(halfWidth, halfDepth))
-        }
-        /*model.childrens.push(await Mesh.create(gl, model.material, {
-            position: [
-                -0.07, -0.07, 0.1,
-                 0.07, -0.07, 0.1,
-                 0.07,  0.07, 0.1,
-                -0.07,  0.07, 0.1,
-                 0,     0,    0.25,
-            ],
-            indices: [
-                0, 1, 4,
-                1, 2, 4,
-                2, 3, 4,
-                3, 0, 4,
-            ],
-        }))*/
+        model.updateCollisionRadius()
         return model
+    }
+
+    updateCollisionRadius(){
+        if (!this.bbox) return
+
+        const halfWidth = (this.bbox.max[0] - this.bbox.min[0]) / 2
+        const halfDepth = Math.max(
+            (this.bbox.max[2] - this.bbox.min[2]) / 2,
+            0.25
+        )
+        this.collisionRadius = Math.hypot(halfWidth, halfDepth)
+    }
+
+    receiveResources(resources, rootStats){
+        for (const [resource, amount] of Object.entries(resources)) {
+            if (typeof amount !== 'number' || typeof rootStats[resource] !== 'number') {
+                console.warn(`Cannot add invalid resource "${resource}" to rootStats.`)
+                continue
+            }
+
+            rootStats[resource] += amount
+        }
     }
 
     setPath(path){
@@ -245,85 +327,13 @@ export class MovableModel extends ModelGLTF{
         const desiredSpeed = Math.min(this.speed, distance / deltaTime)
         const desiredX = directionX / distance * desiredSpeed
         const desiredZ = directionZ / distance * desiredSpeed
-        let movementX = desiredX
-        let movementZ = desiredZ
-        let avoidanceStrength = 0
-        const horizon = 2
-
-        for (const other of states) {
-            if (other.model === this) continue
-
-            const relativeX = other.position[0] - state.position[0]
-            const relativeZ = other.position[2] - state.position[2]
-            const currentDistance = Math.hypot(relativeX, relativeZ)
-            const safeDistance = state.radius + other.radius + 0.08
-            const relativeVelocityX = other.velocity[0] - state.velocity[0]
-            const relativeVelocityZ = other.velocity[1] - state.velocity[1]
-            const relativeSpeedSquared =
-                relativeVelocityX * relativeVelocityX +
-                relativeVelocityZ * relativeVelocityZ
-
-            let closestTime = 0
-            let closestDistance = currentDistance
-            if (relativeSpeedSquared > 1e-8) {
-                closestTime = Math.max(0, Math.min(
-                    horizon,
-                    -(relativeX * relativeVelocityX + relativeZ * relativeVelocityZ) /
-                        relativeSpeedSquared
-                ))
-                closestDistance = Math.hypot(
-                    relativeX + relativeVelocityX * closestTime,
-                    relativeZ + relativeVelocityZ * closestTime
-                )
-            }
-
-            if (closestDistance < safeDistance && closestTime > 0) {
-                const first = state.index < other.index ? state : other
-                const second = first === state ? other : state
-                let pairVelocityX = second.velocity[0] - first.velocity[0]
-                let pairVelocityZ = second.velocity[1] - first.velocity[1]
-                let pairSpeed = Math.hypot(pairVelocityX, pairVelocityZ)
-
-                if (pairSpeed < 1e-8) {
-                    pairVelocityX = second.position[0] - first.position[0]
-                    pairVelocityZ = second.position[2] - first.position[2]
-                    pairSpeed = Math.hypot(pairVelocityX, pairVelocityZ)
-                }
-
-                if (pairSpeed < 1e-8) {
-                    pairVelocityX = 1
-                    pairVelocityZ = 0
-                    pairSpeed = 1
-                }
-
-                const sideX = -pairVelocityZ / pairSpeed
-                const sideZ = pairVelocityX / pairSpeed
-                const sideSign = state === first ? 1 : -1
-                const urgency = (safeDistance - closestDistance) / safeDistance
-                const timing = 1 - closestTime / horizon
-                const strength = urgency * (0.6 + timing)
-                movementX += sideX * sideSign * strength * this.speed
-                movementZ += sideZ * sideSign * strength * this.speed
-                avoidanceStrength += strength
-            }
-
-            if (currentDistance < safeDistance) {
-                let awayX = state.position[0] - other.position[0]
-                let awayZ = state.position[2] - other.position[2]
-                if (currentDistance < 1e-8) {
-                    awayX = state.index < other.index ? -1 : 1
-                    awayZ = 0
-                } else {
-                    awayX /= currentDistance
-                    awayZ /= currentDistance
-                }
-
-                const strength = (safeDistance - currentDistance) / safeDistance * 2
-                movementX += awayX * strength * this.speed
-                movementZ += awayZ * strength * this.speed
-                avoidanceStrength += strength
-            }
-        }
+        let { movementX, movementZ, avoidanceStrength } = getAvoidanceMovement(
+            this,
+            state,
+            states,
+            desiredX,
+            desiredZ
+        )
 
         const movementLength = Math.hypot(movementX, movementZ)
         if (movementLength <= 1e-8) return { position: [...state.position] }
