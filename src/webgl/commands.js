@@ -59,7 +59,14 @@ export default function installCommands({
     }
 
     function sendSelectedModelsToResource(resource) {
-        const selectedModels = getSelectedModels()
+        const selectedModels = getSelectedModels().filter(
+            (model) => model.constructor.gather === true
+        )
+        if (selectedModels.length === 0) {
+            console.warn('No selected models can gather resources.')
+            return
+        }
+
         const centers = models.filter((model) => model instanceof CenterModel)
         if (centers.length === 0) {
             console.warn('Cannot send movable models: no center model is available.')

@@ -169,6 +169,8 @@ export class MovableModel extends ModelGLTF{
     }
 
     gatherResources(){
+        if (this.constructor.gather !== true || !this.resourceModel) return
+
         const requestId = ++this.gatherRequestId
         const resourceModel = this.resourceModel
         this.isGathering = true
