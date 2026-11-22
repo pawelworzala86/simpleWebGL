@@ -2,6 +2,7 @@ import DefaultMaterial from './material/defaultMaterial.js'
 import PanelModel from './model/panelModel.js'
 import Terrain from './model/terrain.js'
 import MovableModel from './model/game/movableModel.js'
+import BattleModel from './model/game/battleModel.js'
 import ResourceModel from './model/game/resourceModel.js'
 import CenterModel from './model/game/centerModel.js'
 import Geometry from './geometry.js'
@@ -56,6 +57,12 @@ class Engine {
         shipModel2.displayRole = 'STATEK TRANSPORTOWY'
         shipModel2.displayClass = 'TRANSPORTOWA'
 
+        const battleModel = await BattleModel.create(gl)
+        battleModel.position = [-4, 0, -2]
+        battleModel.displayName = 'BATTLE-01'
+        battleModel.displayRole = 'STATEK BATTLE'
+        battleModel.displayClass = 'BATTLE'
+
         const resourceModel = await ResourceModel.create(gl)
         resourceModel.position = [4, 0, -2]
 
@@ -65,8 +72,9 @@ class Engine {
             shipModel,
             shipModel2,
             resourceModel,
+            battleModel,
         ]
-        const modelsToSelect = [shipModel, shipModel2]
+        const modelsToSelect = [shipModel, shipModel2, battleModel]
         const constModels = [centerModel, resourceModel]
 
         //const modelGLTF = await ModelGLTF.create(gl, 'box')
