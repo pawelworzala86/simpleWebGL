@@ -15,6 +15,7 @@ import PathFinding from './pathFinding.js'
 import createSelection from './selection.js'
 import installCommands from './commands.js'
 import updateMovements from './movement.js'
+import BotAI from './botAI.js'
 
 const { mat4 } = glMatrix
 
@@ -93,6 +94,12 @@ class Engine {
         const botModels = models.filter((model) =>
             typeof model.group === 'string' && model.group !== 'player'
         )
+        const botAIs = [...new Set(botModels.map((model) => model.group))]
+            .map((group) => new BotAI(
+                group,
+                botModels.filter((model) => model.group === group)
+            ))
+        const botAIsByGroup = new Map(botAIs.map((botAI) => [botAI.group, botAI]))
         const constModels = [centerModel, resourceModel]
 
         //const modelGLTF = await ModelGLTF.create(gl, 'box')
@@ -159,19 +166,44 @@ class Engine {
             getGroundPoint: selection.getGroundPoint,
         })
 
-        const laserMaterial = new DefaultMaterial(gl)
-        laserMaterial.uniforms.color = [1.0, 0.12, 0.04]
-        const laserGeometry = {
-            position: new Float32Array(12),
-            indices: [0, 1, 2, 3],
+        const projectileMaterial = new DefaultMaterial(gl)
+        projectileMaterial.uniforms.color = [1.0, 0.45, 0.08]
+        const projectileGeometry = {
+            position: [
+                -0.035, -0.035, -0.035, 0.035, -0.035, -0.035,
+                0.035, 0.035, -0.035, -0.035, 0.035, -0.035,
+                -0.035, -0.035, 0.035, 0.035, -0.035, 0.035,
+                0.035, 0.035, 0.035, -0.035, 0.035, 0.035,
+            ],
+            indices: [
+                0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6,
+                0, 3, 7, 0, 7, 4, 1, 5, 6, 1, 6, 2,
+                0, 4, 5, 0, 5, 1, 3, 2, 6, 3, 6, 7,
+            ],
         }
-        const laserMesh = await Mesh.create(
+        const projectileMesh = await Mesh.create(
             gl,
-            laserMaterial,
-            laserGeometry,
-            gl.LINES
+            projectileMaterial,
+            projectileGeometry
         )
-        const laserEffects = new Map()
+        const weaponCooldowns = new Map()
+        const projectiles = []
+
+        function spawnProjectile(shooter, target) {
+            if (projectiles.length >= 128) return false
+
+            const muzzleDistance = shooter.collisionRadius + 0.06
+            projectiles.push({
+                source: shooter,
+                target,
+                position: [
+                    shooter.position[0] + Math.sin(shooter.rotationY) * muzzleDistance,
+                    shooter.position[1] + 0.12,
+                    shooter.position[2] + Math.cos(shooter.rotationY) * muzzleDistance,
+                ],
+            })
+            return true
+        }
 
         let frame = 0
         let lastTime = 0
@@ -201,7 +233,8 @@ class Engine {
 
             for (const model of models) {
                 const target = model.attackTarget
-                if (!target || !models.includes(target)) continue
+                if (!target || !models.includes(target) ||
+                    model.group !== 'player') continue
 
                 const distance = Math.hypot(
                     model.position[0] - target.position[0],
@@ -210,34 +243,57 @@ class Engine {
                 if (model.pathIndex < model.path.length ||
                     distance > model.attackRange) continue
 
-                let effect = laserEffects.get(model)
-                if (!effect || effect.target !== target) {
-                    effect = { target, nextShot: 0, visibleUntil: 0 }
-                    laserEffects.set(model, effect)
+                let weapon = weaponCooldowns.get(model)
+                if (!weapon || weapon.target !== target) {
+                    weapon = { target, nextShot: 0 }
+                    weaponCooldowns.set(model, weapon)
                 }
-                if (time >= effect.nextShot) {
-                    effect.nextShot = time + 550
-                    effect.visibleUntil = time + 160
-                }
-                if (time >= effect.visibleUntil) continue
+                if (time < weapon.nextShot) continue
 
-                const sideX = Math.cos(model.rotationY) * 0.035
-                const sideZ = -Math.sin(model.rotationY) * 0.035
-                const startX = model.position[0] +
-                    Math.sin(model.rotationY) * model.collisionRadius
-                const startZ = model.position[2] +
-                    Math.cos(model.rotationY) * model.collisionRadius
-                const positions = new Float32Array([
-                    startX - sideX, model.position[1] + 0.12, startZ - sideZ,
-                    target.position[0] - sideX, target.position[1] + 0.12,
-                    target.position[2] - sideZ,
-                    startX + sideX, model.position[1] + 0.12, startZ + sideZ,
-                    target.position[0] + sideX, target.position[1] + 0.12,
-                    target.position[2] + sideZ,
-                ])
-                gl.bindBuffer(gl.ARRAY_BUFFER, laserMesh.buffer.position)
-                gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW)
-                laserMesh.render(uniforms)
+                weapon.nextShot = time + 500
+                spawnProjectile(model, target)
+            }
+
+            for (let index = projectiles.length - 1; index >= 0; index--) {
+                const projectile = projectiles[index]
+                const target = projectile.target
+                if (!models.includes(target)) {
+                    projectiles.splice(index, 1)
+                    continue
+                }
+
+                const targetHeight = target.bbox
+                    ? (target.bbox.min[1] + target.bbox.max[1]) / 2
+                    : 0.12
+                const targetX = target.position[0]
+                const targetY = target.position[1] + targetHeight
+                const targetZ = target.position[2]
+                const directionX = targetX - projectile.position[0]
+                const directionY = targetY - projectile.position[1]
+                const directionZ = targetZ - projectile.position[2]
+                const distance = Math.hypot(directionX, directionY, directionZ)
+                const step = 12 * deltaTime
+
+                if (distance <= step + Math.max(0.06, target.collisionRadius * 0.2)) {
+                    if (target.group !== 'player') {
+                        botAIsByGroup.get(target.group)?.onShipHit(projectile.source, time)
+                    }
+                    projectiles.splice(index, 1)
+                    continue
+                }
+
+                projectile.position[0] += directionX / distance * step
+                projectile.position[1] += directionY / distance * step
+                projectile.position[2] += directionZ / distance * step
+                const projectileMatrix = mat4.create()
+                mat4.fromTranslation(projectileMatrix, projectile.position)
+                projectileMesh.render(uniforms, projectileMatrix)
+            }
+
+            for (const botAI of botAIs) {
+                for (const shot of botAI.update(time, models)) {
+                    spawnProjectile(shot.shooter, shot.target)
+                }
             }
 
             setScene(null)
