@@ -1,4 +1,5 @@
 import MovableModel from './model/game/movableModel.js'
+import CenterModel from './model/game/centerModel.js'
 
 function resolveMovementCollisions(states, plans) {
     for (let iteration = 0; iteration < 4; iteration++) {
@@ -35,7 +36,13 @@ function resolveMovementCollisions(states, plans) {
     }
 }
 
-export default function updateMovements(models, deltaTime, centerModel, rootStats) {
+export default function updateMovements(
+    models,
+    deltaTime,
+    centerModel,
+    rootStats,
+    botAIsByGroup
+) {
     const movableModels = models.filter((model) => model instanceof MovableModel)
     const movementStates = movableModels.map((model, index) =>
         model.getMovementState(index)
@@ -52,7 +59,22 @@ export default function updateMovements(models, deltaTime, centerModel, rootStat
         )
         if (completedLeg === 1) {
             const resources = model.takeGatheredResources()
-            if (resources) centerModel.receiveResources(resources, rootStats)
+            if (!resources) continue
+
+            const deliveryCenter = model.group === 'player'
+                ? centerModel
+                : models.find((candidate) =>
+                    candidate instanceof CenterModel &&
+                    candidate.group === model.group
+                )
+            const recipientStats = model.group === 'player'
+                ? rootStats
+                : botAIsByGroup.get(model.group)?.resources
+            if (!deliveryCenter || !recipientStats) {
+                console.warn(`Cannot deposit gathered resources for group "${model.group}".`)
+                continue
+            }
+            deliveryCenter.receiveResources(resources, recipientStats)
         }
     }
 }

@@ -1,5 +1,8 @@
 import BattleModel from './model/game/battleModel.js'
 import MovableModel from './model/game/movableModel.js'
+import CenterModel from './model/game/centerModel.js'
+import ResourceModel from './model/game/resourceModel.js'
+import { createResourceShuttle } from './resourceShuttle.js'
 
 export class BotAI {
     constructor(group, entities = []) {
@@ -14,6 +17,9 @@ export class BotAI {
         this.retaliationUntil = 0
         this.nextShotByShip = new Map()
         this.targetByShip = new Map()
+        this.nextMiningAttemptByShip = new Map()
+        this.resources = { steel: 0, hydrogen: 0 }
+        this.miningSetupWarning = false
 
         for (const entity of entities) this.addEntity(entity)
     }
@@ -34,9 +40,77 @@ export class BotAI {
         this.buildings = this.buildings.filter((building) => building !== entity)
         this.nextShotByShip.delete(entity)
         this.targetByShip.delete(entity)
+        this.nextMiningAttemptByShip.delete(entity)
         if (this.retaliationTarget === entity) {
             this.retaliationTarget = null
             this.retaliationUntil = 0
+        }
+    }
+
+    dispatchMiningShips(time, worldModels, pathFinding) {
+        const miners = this.ships.filter((ship) =>
+            ship.constructor.gather === true &&
+            worldModels.includes(ship) &&
+            !ship.shuttlePaths
+        )
+        if (miners.length === 0) return
+        if (!pathFinding) {
+            throw new TypeError('BotAI requires pathfinding to dispatch mining ships.')
+        }
+
+        const resource = worldModels.find((model) =>
+            model instanceof ResourceModel && model.group === this.group
+        )
+        const center = worldModels.find((model) =>
+            model instanceof CenterModel && model.group === this.group
+        )
+        if (!resource || !center) {
+            if (!this.miningSetupWarning) {
+                console.warn(`Bot "${this.group}" cannot mine without its resource and center models.`)
+                this.miningSetupWarning = true
+            }
+            return
+        }
+        this.miningSetupWarning = false
+
+        for (const ship of miners) {
+            if (time < (this.nextMiningAttemptByShip.get(ship) || 0)) continue
+            this.nextMiningAttemptByShip.set(ship, time + 1000)
+
+            const obstacles = [
+                ...worldModels.filter((model) =>
+                    (model instanceof CenterModel || model instanceof ResourceModel) &&
+                    model !== center &&
+                    model !== resource
+                ),
+                ...worldModels
+                    .filter((model) => model instanceof MovableModel && model !== ship)
+                    .map((model) => ({
+                        position: model.position,
+                        bbox: { min: [0, 0, 0], max: [0, 0, 0] },
+                    })),
+            ]
+            const shuttle = createResourceShuttle(
+                ship,
+                resource,
+                center,
+                pathFinding,
+                obstacles
+            )
+            if (!shuttle) {
+                console.warn(`Bot "${this.group}" cannot create a resource shuttle path.`)
+                continue
+            }
+            if (!resource.reserveStation(ship, shuttle.stationIndex)) {
+                console.warn(`Bot "${this.group}" cannot reserve its resource station.`)
+                continue
+            }
+
+            ship.setShuttlePaths(
+                shuttle.shuttlePaths,
+                resource,
+                shuttle.stationIndex
+            )
         }
     }
 
@@ -47,7 +121,9 @@ export class BotAI {
         this.retaliationUntil = time + 6000
     }
 
-    update(time, worldModels) {
+    update(time, worldModels, pathFinding) {
+        this.dispatchMiningShips(time, worldModels, pathFinding)
+
         if (time >= this.retaliationUntil ||
             !worldModels.includes(this.retaliationTarget) ||
             this.retaliationTarget?.group !== 'player' ||

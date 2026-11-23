@@ -2,6 +2,7 @@ import CenterModel from './model/game/centerModel.js'
 import BattleModel from './model/game/battleModel.js'
 import MovableModel from './model/game/movableModel.js'
 import ResourceModel from './model/game/resourceModel.js'
+import { createResourceShuttle } from './resourceShuttle.js'
 
 export default function installCommands({
     canvas,
@@ -30,37 +31,6 @@ export default function installCommands({
         return [...constModels, ...movingObstacles]
     }
 
-    function getApproachPoint(target, direction, slotOffset, model) {
-        const perpendicular = [-direction[1], direction[0]]
-        const margin = model.collisionRadius + pathFinding.clearance +
-            pathFinding.cellSize / 2 + 0.08
-        let distance = Infinity
-
-        for (const [axis, component, lateral] of [
-            [0, direction[0], perpendicular[0] * slotOffset],
-            [2, direction[1], perpendicular[1] * slotOffset],
-        ]) {
-            if (Math.abs(component) < 1e-8) continue
-            const extent = component > 0
-                ? target.bbox.max[axis]
-                : -target.bbox.min[axis]
-            distance = Math.min(
-                distance,
-                Math.max(
-                    0,
-                    (extent + margin - Math.sign(component) * lateral) /
-                        Math.abs(component)
-                )
-            )
-        }
-
-        return [
-            target.position[0] + direction[0] * distance + perpendicular[0] * slotOffset,
-            target.position[1],
-            target.position[2] + direction[1] * distance + perpendicular[1] * slotOffset,
-        ]
-    }
-
     function sendSelectedModelsToResource(resource) {
         const selectedModels = getSelectedModels().filter(
             (model) => model.constructor.gather === true
@@ -70,7 +40,9 @@ export default function installCommands({
             return
         }
 
-        const centers = models.filter((model) => model instanceof CenterModel)
+        const centers = models.filter((model) =>
+            model instanceof CenterModel && model.group === 'player'
+        )
         if (centers.length === 0) {
             console.warn('Cannot send movable models: no center model is available.')
             return
@@ -87,17 +59,6 @@ export default function installCommands({
             )
             return candidateDistance < nearestDistance ? candidate : nearest
         })
-        const directionLength = Math.hypot(
-            center.position[0] - resource.position[0],
-            center.position[2] - resource.position[2]
-        )
-        const direction = directionLength > 1e-8
-            ? [
-                (center.position[0] - resource.position[0]) / directionLength,
-                (center.position[2] - resource.position[2]) / directionLength,
-            ]
-            : [1, 0]
-        const centerDirection = [-direction[0], -direction[1]]
         const slotSpacing = selectedModels.reduce(
             (maximum, model) => Math.max(maximum, model.collisionRadius * 2 + 0.16),
             0
@@ -117,91 +78,35 @@ export default function installCommands({
                 )
             }
 
-            let shuttlePaths = null
-            let centerPoint = null
-            let stationIndex = null
-            const availableStations = resource.getAvailableStations(
+            const shuttle = createResourceShuttle(
                 model,
-                reservedResourceStations
-            ).map((station) => {
-                const point = getApproachPoint(
-                    resource,
-                    station.direction,
-                    0,
-                    model
-                )
-                return {
-                    station,
-                    point,
-                    distanceToCenter: Math.hypot(
-                        point[0] - center.position[0],
-                        point[2] - center.position[2]
-                    ),
+                resource,
+                center,
+                pathFinding,
+                obstacles,
+                {
+                    reservedStations: reservedResourceStations,
+                    reservedCenterPoints,
+                    candidateOffsets,
+                    slotSpacing,
                 }
-            }).sort((first, second) =>
-                first.distanceToCenter - second.distanceToCenter
             )
-
-            for (const { station, point: candidateResourcePoint } of availableStations) {
-                for (const candidateOffset of candidateOffsets) {
-                    const candidateCenterPoint = getApproachPoint(
-                        center,
-                        centerDirection,
-                        candidateOffset,
-                        model
-                    )
-                    const overlapsReservedCenter = reservedCenterPoints.some((point) =>
-                        Math.hypot(
-                            point[0] - candidateCenterPoint[0],
-                            point[2] - candidateCenterPoint[2]
-                        ) < slotSpacing
-                    )
-                    if (overlapsReservedCenter) continue
-
-                    const pathToResource = pathFinding.findPath(
-                        model.position,
-                        candidateResourcePoint,
-                        obstacles
-                    )
-                    const pathToCenter = pathFinding.findPath(
-                        candidateResourcePoint,
-                        candidateCenterPoint,
-                        obstacles
-                    )
-                    const pathToResourceAgain = pathFinding.findPath(
-                        candidateCenterPoint,
-                        candidateResourcePoint,
-                        obstacles
-                    )
-                    if (!pathToResource || !pathToCenter || !pathToResourceAgain) continue
-
-                    const toWorldPath = (path) => path.map(([x, z]) =>
-                        vec3.fromValues(x, model.position[1], z)
-                    )
-                    shuttlePaths = [
-                        toWorldPath(pathToResource),
-                        toWorldPath(pathToCenter),
-                        toWorldPath(pathToResourceAgain),
-                    ]
-                    centerPoint = candidateCenterPoint
-                    stationIndex = station.index
-                    break
-                }
-                if (shuttlePaths) break
-            }
-
-            if (!shuttlePaths) {
+            if (!shuttle) {
                 console.warn('Cannot create a complete resource shuttle path for a movable model.')
                 continue
             }
 
-            if (!resource.reserveStation(model, stationIndex)) {
+            if (!resource.reserveStation(model, shuttle.stationIndex)) {
                 console.warn('Cannot reserve a resource station for a movable model.')
                 continue
             }
-            reservedResourceStations.add(stationIndex)
-            reservedCenterPoints.push(centerPoint)
-            model.setShuttlePaths(shuttlePaths, resource, stationIndex)
+            reservedResourceStations.add(shuttle.stationIndex)
+            reservedCenterPoints.push(shuttle.centerPoint)
+            model.setShuttlePaths(
+                shuttle.shuttlePaths,
+                resource,
+                shuttle.stationIndex
+            )
         }
     }
 

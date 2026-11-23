@@ -40,18 +40,25 @@ class Engine {
     async run() {
         const { gl, canvas, rootStats } = this
 
+        const panelModel = await PanelModel.create(gl, [-1.0, -1.0, 1.0, 1.0], 'panel')
+
+
+
         const redMaterial = new DefaultMaterial(gl)
         redMaterial.uniforms.color = [1.0, 0.0, 0.0]
 
         const botMaterial = new DefaultMaterial(gl)
         botMaterial.uniforms.color = [0.7, 0.7, 1.0]
 
-        const panelModel = await PanelModel.create(gl, [-1.0, -1.0, 1.0, 1.0], 'panel')
-        const ground = await Geometry.createGround(gl, 10, 20)
+        const playerMaterial = new DefaultMaterial(gl)
+        playerMaterial.uniforms.color = [0.55, 0.9, 0.75]
+
+        const ground = await Geometry.createGround(gl, 100, 200)
 
 
         const centerModel = await CenterModel.create(gl)
         centerModel.group = 'player'
+        centerModel.material = playerMaterial
 
         const shipModel = await ShipModel.create(gl)
         shipModel.position = [5, 0, 5]
@@ -59,6 +66,7 @@ class Engine {
         shipModel.displayRole = 'STATEK WYDOBYWCZY'
         shipModel.displayClass = 'WYDOBYWCZA'
         shipModel.group = 'player'
+        shipModel.material = playerMaterial
 
         const shipModel2 = await ShipModel.create(gl)
         shipModel2.position = [4, 0, 4]
@@ -66,6 +74,7 @@ class Engine {
         shipModel2.displayRole = 'STATEK TRANSPORTOWY'
         shipModel2.displayClass = 'TRANSPORTOWA'
         shipModel2.group = 'player'
+        shipModel2.material = playerMaterial
 
         const battleModel = await BattleModel.create(gl)
         battleModel.position = [-4, 0, -2]
@@ -73,17 +82,42 @@ class Engine {
         battleModel.displayRole = 'STATEK BATTLE'
         battleModel.displayClass = 'BATTLE'
         battleModel.group = 'player'
+        battleModel.material = playerMaterial
+
+
+
+
+        const botCenterModel = await CenterModel.create(gl)
+        botCenterModel.position = [-16, 0, -10]
+        botCenterModel.group = 'bot-01'
+        botCenterModel.material = botMaterial
 
         const botBatttleModel = await BattleModel.create(gl)
-        botBatttleModel.position = [-8, 0, -4]
+        botBatttleModel.position = [-12, 0, -8]
         botBatttleModel.displayName = 'BATTLE-BOT-01'
         botBatttleModel.displayRole = 'STATEK BATTLE'
         botBatttleModel.displayClass = 'BATTLE'
         botBatttleModel.group = 'bot-01'
         botBatttleModel.material = botMaterial
 
+        const botShipModel = await ShipModel.create(gl)
+        botShipModel.position = [-14, 0, -8]
+        botShipModel.displayName = 'KOPARKA-BOT-01'
+        botShipModel.displayRole = 'STATEK WYDOBYWCZY'
+        botShipModel.displayClass = 'WYDOBYWCZA'
+        botShipModel.group = 'bot-01'
+        botShipModel.material = botMaterial
+
+
+
         const resourceModel = await ResourceModel.create(gl)
         resourceModel.position = [4, 0, -2]
+
+        const resourceModel2 = await ResourceModel.create(gl)
+        resourceModel2.position = [-8, 0, -6]
+        resourceModel2.group = 'bot-01'
+
+
 
         const models = [
             centerModel,
@@ -91,8 +125,11 @@ class Engine {
             shipModel,
             shipModel2,
             resourceModel,
+            resourceModel2,
             battleModel,
+            botCenterModel,
             botBatttleModel,
+            botShipModel,
         ]
         const modelsToSelect = [shipModel, shipModel2, battleModel]
         const botModels = models.filter((model) =>
@@ -104,7 +141,7 @@ class Engine {
                 botModels.filter((model) => model.group === group)
             ))
         const botAIsByGroup = new Map(botAIs.map((botAI) => [botAI.group, botAI]))
-        const constModels = [centerModel, resourceModel]
+        const constModels = [centerModel, resourceModel, resourceModel2, botCenterModel]
 
         //const modelGLTF = await ModelGLTF.create(gl, 'box')
         //modelGLTF.position = [-2, 0, -5]
@@ -237,7 +274,7 @@ class Engine {
             frame = (frame + 1) % 4096
 
             controls.processInput(deltaTime)
-            updateMovements(models, deltaTime, centerModel, rootStats)
+            updateMovements(models, deltaTime, centerModel, rootStats, botAIsByGroup)
             camera.updateFollow(deltaTime)
             //terrain.updateLOD(camera.position)
 
@@ -319,7 +356,7 @@ class Engine {
             }
 
             for (const botAI of botAIs) {
-                for (const shot of botAI.update(time, models)) {
+                for (const shot of botAI.update(time, models, pathFinding)) {
                     spawnProjectile(shot.shooter, shot.target)
                 }
             }
