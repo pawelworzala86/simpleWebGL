@@ -1,4 +1,4 @@
-function getApproachPoint(
+export function getApproachPoint(
     target,
     direction,
     slotOffset,

@@ -4,7 +4,10 @@ import MovableModel, {
     createPathfindingObstacle,
 } from './model/game/movableModel.js'
 import ResourceModel from './model/game/resourceModel.js'
-import { createResourceShuttle } from './resourceShuttle.js'
+import {
+    createResourceShuttle,
+    getApproachPoint,
+} from './resourceShuttle.js'
 
 export default function installCommands({
     canvas,

@@ -319,8 +319,7 @@ class Engine {
                     model.position[0] - target.position[0],
                     model.position[2] - target.position[2]
                 )
-                if (model.pathIndex < model.path.length ||
-                    distance > model.attackRange) continue
+                if (distance > model.attackRange) continue
 
                 model.faceTarget(target)
                 let weapon = weaponCooldowns.get(model)
