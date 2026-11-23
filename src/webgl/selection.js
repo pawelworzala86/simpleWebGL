@@ -5,6 +5,7 @@ export default function createSelection({
     intersect,
     projection,
     camera,
+    playerGroup = 'player',
 }) {
     const { mat4, vec3, vec4 } = glMatrix
     let selectedModels = []
@@ -286,7 +287,7 @@ export default function createSelection({
         const [pixelX, pixelY] = getCanvasPixel(event)
         const hit = intersect.get(pixelX, pixelY, projection, camera.getViewMatrix())
         if (hit && typeof hit.model.group === 'string' &&
-            hit.model.group !== 'player') return
+            hit.model.group !== playerGroup) return
         setSelectedModels(hit && modelsToSelect.includes(hit.model) ? [hit.model] : [])
     })
 

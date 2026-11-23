@@ -45,7 +45,7 @@ class Engine {
         this.players = []
 
         const player = new Player('Player-01')
-        const bot = new Player('Bot-01')
+        const bot = new BotAI('Bot-01', [], player.name)
 
         this.players.push(player)
         this.players.push(bot)
@@ -123,9 +123,11 @@ class Engine {
 
         const resourceModel = await ResourceModel.create(gl)
         resourceModel.position = [4, 0, -2]
+        resourceModel.group = player.name
 
         const resourceModel2 = await ResourceModel.create(gl)
         resourceModel2.position = [-8, 0, -6]
+        resourceModel2.group = bot.name
 
 
 
@@ -143,13 +145,18 @@ class Engine {
         ]
         const modelsToSelect = [shipModel, shipModel2, battleModel]
         const botModels = models.filter((model) =>
-            typeof model.group === 'string' && model.group !== 'player'
+            typeof model.group === 'string' && model.group !== player.name
         )
         const botAIs = [...new Set(botModels.map((model) => model.group))]
-            .map((group) => new BotAI(
-                group,
-                botModels.filter((model) => model.group === group)
-            ))
+            .map((group) => {
+                const botAI = group === bot.name
+                    ? bot
+                    : new BotAI(group, [], player.name)
+                for (const entity of botModels) {
+                    if (entity.group === group) botAI.addEntity(entity)
+                }
+                return botAI
+            })
         const botAIsByGroup = new Map(botAIs.map((botAI) => [botAI.group, botAI]))
         const constModels = [centerModel, resourceModel, resourceModel2, botCenterModel]
 
@@ -200,6 +207,7 @@ class Engine {
             intersect,
             projection,
             camera,
+            playerGroup: player.name,
         })
         const controls = new Controls(canvas, camera, selection.getSelectedModels)
 
@@ -215,6 +223,7 @@ class Engine {
             pathFinding,
             getCanvasPixel: selection.getCanvasPixel,
             getGroundPoint: selection.getGroundPoint,
+            playerGroup: player.name,
         })
 
         const projectileMaterial = new DefaultMaterial(gl)
@@ -304,7 +313,7 @@ class Engine {
             for (const model of models) {
                 const target = model.attackTarget
                 if (!target || !models.includes(target) ||
-                    model.group !== 'player') continue
+                    model.group !== player.name) continue
 
                 const distance = Math.hypot(
                     model.position[0] - target.position[0],
@@ -349,7 +358,7 @@ class Engine {
                     ? target.collisionRadius
                     : 0
                 if (distance <= step + Math.max(0.06, targetRadius * 0.2)) {
-                    if (target.group !== 'player') {
+                    if (target.group !== player.name) {
                         botAIsByGroup.get(target.group)?.onShipHit(projectile.source, time)
                     }
                     if (target.takeDamage(25)) removeModel(target)
@@ -382,7 +391,7 @@ class Engine {
 
         animate(0)
 
-        return player.resources.storage
+        return rootStats
     }
 }
 

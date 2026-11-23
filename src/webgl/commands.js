@@ -16,6 +16,7 @@ export default function installCommands({
     pathFinding,
     getCanvasPixel,
     getGroundPoint,
+    playerGroup = 'player',
 }) {
     const { vec3 } = glMatrix
 
@@ -41,7 +42,7 @@ export default function installCommands({
         }
 
         const centers = models.filter((model) =>
-            model instanceof CenterModel && model.group === 'player'
+            model instanceof CenterModel && model.group === playerGroup
         )
         if (centers.length === 0) {
             console.warn('Cannot send movable models: no center model is available.')
@@ -112,7 +113,7 @@ export default function installCommands({
 
     function sendSelectedBattleShipsToBot(target) {
         const selectedModels = getSelectedModels().filter((model) =>
-            model instanceof BattleModel && model.group === 'player'
+            model instanceof BattleModel && model.group === playerGroup
         )
         if (selectedModels.length === 0) return
 
@@ -199,7 +200,7 @@ export default function installCommands({
         const hit = intersect.get(pixelX, pixelY, projection, camera.getViewMatrix())
         if (hit && hit.model instanceof MovableModel &&
             typeof hit.model.group === 'string' &&
-            hit.model.group !== 'player') {
+            hit.model.group !== playerGroup) {
             sendSelectedBattleShipsToBot(hit.model)
             return
         }

@@ -61,15 +61,15 @@ export default function updateMovements(
             const resources = model.takeGatheredResources()
             if (!resources) continue
 
-            const deliveryCenter = model.group === 'player'
+            const deliveryCenter = model.group === centerModel.group
                 ? centerModel
                 : models.find((candidate) =>
                     candidate instanceof CenterModel &&
                     candidate.group === model.group
                 )
-            const recipientStats = model.group === 'player'
+            const recipientStats = model.group === centerModel.group
                 ? rootStats
-                : botAIsByGroup.get(model.group)?.resources
+                : botAIsByGroup.get(model.group)?.resources.storage
             if (!deliveryCenter || !recipientStats) {
                 console.warn(`Cannot deposit gathered resources for group "${model.group}".`)
                 continue

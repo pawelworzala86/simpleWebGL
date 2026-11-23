@@ -3,14 +3,17 @@ import MovableModel from './model/game/movableModel.js'
 import CenterModel from './model/game/centerModel.js'
 import ResourceModel from './model/game/resourceModel.js'
 import { createResourceShuttle } from './resourceShuttle.js'
+import Player from './player.js'
 
-export class BotAI {
-    constructor(group, entities = []) {
-        if (typeof group !== 'string' || group === '' || group === 'player') {
+export class BotAI extends Player {
+    constructor(group, entities = [], playerGroup = 'player') {
+        if (typeof group !== 'string' || group === '' || group === playerGroup) {
             throw new TypeError('BotAI requires a non-player group name')
         }
 
+        super(group)
         this.group = group
+        this.playerGroup = playerGroup
         this.buildings = []
         this.ships = []
         this.retaliationTarget = null
@@ -18,7 +21,6 @@ export class BotAI {
         this.nextShotByShip = new Map()
         this.targetByShip = new Map()
         this.nextMiningAttemptByShip = new Map()
-        this.resources = { steel: 0, hydrogen: 0 }
         this.miningSetupWarning = false
 
         for (const entity of entities) this.addEntity(entity)
@@ -115,7 +117,8 @@ export class BotAI {
     }
 
     onShipHit(attacker, time) {
-        if (!(attacker instanceof MovableModel) || attacker.group !== 'player') return
+        if (!(attacker instanceof MovableModel) ||
+            attacker.group !== this.playerGroup) return
 
         this.retaliationTarget = attacker
         this.retaliationUntil = time + 6000
@@ -126,13 +129,13 @@ export class BotAI {
 
         if (time >= this.retaliationUntil ||
             !worldModels.includes(this.retaliationTarget) ||
-            this.retaliationTarget?.group !== 'player' ||
+            this.retaliationTarget?.group !== this.playerGroup ||
             this.retaliationTarget?.health <= 0) {
             this.retaliationTarget = null
         }
 
         const playerTargets = worldModels.filter((model) =>
-            model.group === 'player' &&
+            model.group === this.playerGroup &&
             model.damageable !== false &&
             model.health > 0
         )

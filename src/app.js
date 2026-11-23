@@ -6,6 +6,6 @@ import Engine from './webgl/engine.js'
 
 
 const engine = new Engine();
-const playerStats = engine.run();
+const playerStats = await engine.run();
 
 RED.init(playerStats)
