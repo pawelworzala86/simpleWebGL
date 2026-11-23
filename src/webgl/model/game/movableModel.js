@@ -2,88 +2,132 @@ import ModelGLTF from './../../../webgl/model/modelGLTF.js'
 
 const { mat4, vec3 } = glMatrix
 
-function getAvoidanceMovement(model, state, states, desiredX, desiredZ){
-    let movementX = desiredX
-    let movementZ = desiredZ
-    let avoidanceStrength = 0
-    const horizon = 2
+function getAvoidanceMovement(model, state, states, desiredX, desiredZ, deltaTime){
+    const desiredSpeed = Math.hypot(desiredX, desiredZ)
+    if (desiredSpeed <= 1e-8) {
+        return { movementX: 0, movementZ: 0, avoidanceStrength: 0 }
+    }
 
-    for (const other of states) {
-        if (other.model === model) continue
+    const desiredAngle = Math.atan2(desiredX, desiredZ)
+    const preferredSide = state.index % 2 === 0 ? -1 : 1
+    const angles = [0]
+    for (const angle of [15, 30, 45, 60, 90, 120, 150, 180]) {
+        angles.push(preferredSide * angle, -preferredSide * angle)
+    }
+    angles.push(null)
 
-        const relativeX = other.position[0] - state.position[0]
-        const relativeZ = other.position[2] - state.position[2]
-        const currentDistance = Math.hypot(relativeX, relativeZ)
-        const safeDistance = state.radius + other.radius + 0.08
-        const relativeVelocityX = other.velocity[0] - state.velocity[0]
-        const relativeVelocityZ = other.velocity[1] - state.velocity[1]
-        const relativeSpeedSquared =
-            relativeVelocityX * relativeVelocityX +
-            relativeVelocityZ * relativeVelocityZ
+    const candidates = []
+    for (const angle of angles) {
+        const heading = angle === null
+            ? desiredAngle
+            : desiredAngle + angle * Math.PI / 180
+        const candidateSpeed = angle === null ? 0 : desiredSpeed
+        const movementX = Math.sin(heading) * candidateSpeed
+        const movementZ = Math.cos(heading) * candidateSpeed
+        let collisionRisk = 0
 
-        let closestTime = 0
-        let closestDistance = currentDistance
-        if (relativeSpeedSquared > 1e-8) {
-            closestTime = Math.max(0, Math.min(
-                horizon,
-                -(relativeX * relativeVelocityX + relativeZ * relativeVelocityZ) /
-                    relativeSpeedSquared
-            ))
-            closestDistance = Math.hypot(
+        for (const other of states) {
+            if (other.model === model) continue
+
+            const relativeX = other.position[0] - state.position[0]
+            const relativeZ = other.position[2] - state.position[2]
+            const currentDistance = Math.hypot(relativeX, relativeZ)
+            const safeDistance = state.radius + other.radius + 0.08
+            const otherVelocityX = other.yielding ? 0 : other.velocity[0]
+            const otherVelocityZ = other.yielding ? 0 : other.velocity[1]
+            const relativeVelocityX = otherVelocityX - movementX
+            const relativeVelocityZ = otherVelocityZ - movementZ
+            const relativeSpeedSquared =
+                relativeVelocityX * relativeVelocityX +
+                relativeVelocityZ * relativeVelocityZ
+            const closestTime = relativeSpeedSquared > 1e-8
+                ? Math.max(0, Math.min(
+                    1.5,
+                    -(relativeX * relativeVelocityX + relativeZ * relativeVelocityZ) /
+                        relativeSpeedSquared
+                ))
+                : 0
+            const closestDistance = Math.hypot(
                 relativeX + relativeVelocityX * closestTime,
                 relativeZ + relativeVelocityZ * closestTime
             )
+
+            if (currentDistance < safeDistance) {
+                const awayX = state.position[0] - other.position[0]
+                const awayZ = state.position[2] - other.position[2]
+                const separationSpeed = movementX * awayX + movementZ * awayZ
+                if (separationSpeed < 0) collisionRisk += 2
+            } else if (closestTime > 0 && closestDistance < safeDistance) {
+                collisionRisk += (safeDistance - closestDistance) / safeDistance
+            }
         }
 
-        if (closestDistance < safeDistance && closestTime > 0) {
-            const first = state.index < other.index ? state : other
-            const second = first === state ? other : state
-            let pairVelocityX = second.velocity[0] - first.velocity[0]
-            let pairVelocityZ = second.velocity[1] - first.velocity[1]
-            let pairSpeed = Math.hypot(pairVelocityX, pairVelocityZ)
+        const progress = (movementX * desiredX + movementZ * desiredZ) /
+            (desiredSpeed * desiredSpeed)
+        candidates.push({
+            angle,
+            movementX,
+            movementZ,
+            collisionRisk,
+            progress,
+        })
+    }
 
-            if (pairSpeed < 1e-8) {
-                pairVelocityX = second.position[0] - first.position[0]
-                pairVelocityZ = second.position[2] - first.position[2]
-                pairSpeed = Math.hypot(pairVelocityX, pairVelocityZ)
-            }
+    const previousAngle = model.avoidanceAngle || 0
+    if (previousAngle !== 0) {
+        model.avoidanceClearTime = candidates[0].collisionRisk === 0
+            ? model.avoidanceClearTime + deltaTime
+            : 0
+    } else {
+        model.avoidanceClearTime = 0
+    }
 
-            if (pairSpeed < 1e-8) {
-                pairVelocityX = 1
-                pairVelocityZ = 0
-                pairSpeed = 1
-            }
+    let best = null
+    for (const candidate of candidates) {
+        if (candidate.angle === 0 && previousAngle !== 0 &&
+            model.avoidanceClearTime < 0.25) continue
 
-            const sideX = -pairVelocityZ / pairSpeed
-            const sideZ = pairVelocityX / pairSpeed
-            const sideSign = state === first ? 1 : -1
-            const urgency = (safeDistance - closestDistance) / safeDistance
-            const timing = 1 - closestTime / horizon
-            const strength = urgency * (0.6 + timing)
-            movementX += sideX * sideSign * strength * model.speed
-            movementZ += sideZ * sideSign * strength * model.speed
-            avoidanceStrength += strength
-        }
-
-        if (currentDistance < safeDistance) {
-            let awayX = state.position[0] - other.position[0]
-            let awayZ = state.position[2] - other.position[2]
-            if (currentDistance < 1e-8) {
-                awayX = state.index < other.index ? -1 : 1
-                awayZ = 0
-            } else {
-                awayX /= currentDistance
-                awayZ /= currentDistance
-            }
-
-            const strength = (safeDistance - currentDistance) / safeDistance * 2
-            movementX += awayX * strength * model.speed
-            movementZ += awayZ * strength * model.speed
-            avoidanceStrength += strength
+        const angle = candidate.angle === null ? 0 : candidate.angle
+        const switchPenalty = previousAngle === 0 ||
+            model.avoidanceClearTime >= 0.25
+            ? 0
+            : Math.abs(angle - previousAngle) * 0.01
+        const score = candidate.collisionRisk * 20 +
+            (1 - candidate.progress) + switchPenalty +
+            (candidate.angle === null ? 2.5 : 0)
+        if (!best || score < best.score) {
+            best = { ...candidate, score }
         }
     }
 
-    return { movementX, movementZ, avoidanceStrength }
+    model.avoidanceAngle = best.angle === null ? previousAngle : best.angle
+    if (best.angle === 0) {
+        model.avoidanceAngle = 0
+        model.avoidanceClearTime = 0
+    }
+    const selectedAngle = Math.atan2(best.movementX, best.movementZ)
+    const angleDifference = Math.atan2(
+        Math.sin(selectedAngle - desiredAngle),
+        Math.cos(selectedAngle - desiredAngle)
+    )
+    return {
+        movementX: best.movementX,
+        movementZ: best.movementZ,
+        avoidanceStrength: Math.abs(angleDifference) / Math.PI,
+    }
+}
+
+export function createPathfindingObstacle(model){
+    const radius = Number.isFinite(model.collisionRadius)
+        ? Math.max(0, model.collisionRadius)
+        : 0
+    return {
+        position: model.position,
+        bbox: {
+            min: [-radius, 0, -radius],
+            max: [radius, 0, radius],
+        },
+    }
 }
 
 export class MovableModel extends ModelGLTF{
@@ -100,6 +144,8 @@ export class MovableModel extends ModelGLTF{
         this.pitch = 0
         this.roll = 0
         this.targetRoll = 0
+        this.avoidanceAngle = 0
+        this.avoidanceClearTime = 0
         this.flightVelocity = vec3.create()
         this.turnSpeed = Math.PI * 2
         this.shuttlePaths = null
@@ -144,6 +190,8 @@ export class MovableModel extends ModelGLTF{
     }
 
     setPath(path){
+        this.avoidanceAngle = 0
+        this.avoidanceClearTime = 0
         this.attackTarget = null
         this.attackRange = 0
         this.gatherRequestId++
@@ -173,6 +221,8 @@ export class MovableModel extends ModelGLTF{
     }
 
     setShuttlePaths(paths, resourceModel, stationIndex){
+        this.avoidanceAngle = 0
+        this.avoidanceClearTime = 0
         this.attackTarget = null
         this.attackRange = 0
         this.gatherRequestId++
@@ -313,6 +363,7 @@ export class MovableModel extends ModelGLTF{
             position,
             velocity,
             radius: this.collisionRadius,
+            yielding: false,
             distanceToDestination: destination
                 ? Math.hypot(destination[0] - position[0], destination[2] - position[2])
                 : 0,
@@ -323,6 +374,9 @@ export class MovableModel extends ModelGLTF{
         if (this.isPlayerControlled) return null
         if (this.isGathering) return null
         if (this.pathIndex >= this.path.length || deltaTime <= 0) return null
+        if (state.yielding) {
+            return { position: [...state.position], yielding: true }
+        }
 
         for (const other of states) {
             if (other.model === this) continue
@@ -355,7 +409,8 @@ export class MovableModel extends ModelGLTF{
             state,
             states,
             desiredX,
-            desiredZ
+            desiredZ,
+            deltaTime
         )
 
         const movementLength = Math.hypot(movementX, movementZ)
@@ -373,9 +428,7 @@ export class MovableModel extends ModelGLTF{
             Math.sign(rotationDifference) * Math.min(Math.abs(rotationDifference), turnStep)
         const turningInPlace = Math.abs(rotationDifference) > turnStep
 
-        const step = avoidanceStrength > 0.05
-            ? this.speed * deltaTime
-            : Math.min(this.speed * deltaTime, distance)
+        const step = Math.min(this.speed * deltaTime, distance)
         const reachedTarget = !turningInPlace &&
             avoidanceStrength <= 0.05 &&
             distance <= step

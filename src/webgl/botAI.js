@@ -75,29 +75,68 @@ export class BotAI extends Player {
         }
         this.miningSetupWarning = false
 
-        for (const ship of miners) {
+        const reservedStations = new Set()
+        const slotSpacing = miners.reduce(
+            (maximum, ship) => Math.max(maximum, ship.collisionRadius * 2 + 0.16),
+            0
+        )
+        const reservedResourcePoints = worldModels
+            .filter((model) =>
+                model instanceof MovableModel &&
+                model.resourceModel === resource &&
+                model.shuttlePaths &&
+                model.shuttlePaths[0].length > 0
+            )
+            .map((model) => {
+                const path = model.shuttlePaths[0]
+                const point = path[path.length - 1]
+                return [point[0], point[1], point[2]]
+            })
+        const reservedCenterPoints = worldModels
+            .filter((model) =>
+                model instanceof MovableModel &&
+                model.resourceModel === resource &&
+                model.shuttlePaths &&
+                model.shuttlePaths[1].length > 0
+            )
+            .map((model) => {
+                const path = model.shuttlePaths[1]
+                const point = path[path.length - 1]
+                return [point[0], point[1], point[2]]
+            })
+        const obstacles = worldModels.filter((model) =>
+            (model instanceof CenterModel || model instanceof ResourceModel) &&
+            model !== center &&
+            model !== resource
+        )
+
+        for (let index = 0; index < miners.length; index++) {
+            const ship = miners[index]
             if (time < (this.nextMiningAttemptByShip.get(ship) || 0)) continue
             this.nextMiningAttemptByShip.set(ship, time + 1000)
 
-            const obstacles = [
-                ...worldModels.filter((model) =>
-                    (model instanceof CenterModel || model instanceof ResourceModel) &&
-                    model !== center &&
-                    model !== resource
-                ),
-                ...worldModels
-                    .filter((model) => model instanceof MovableModel && model !== ship)
-                    .map((model) => ({
-                        position: model.position,
-                        bbox: { min: [0, 0, 0], max: [0, 0, 0] },
-                    })),
-            ]
+            const preferredOffset =
+                (index - (miners.length - 1) / 2) * slotSpacing
+            const candidateOffsets = [preferredOffset]
+            for (let step = 1; step <= miners.length; step++) {
+                candidateOffsets.push(
+                    preferredOffset - step * slotSpacing,
+                    preferredOffset + step * slotSpacing
+                )
+            }
             const shuttle = createResourceShuttle(
                 ship,
                 resource,
                 center,
                 pathFinding,
-                obstacles
+                obstacles,
+                {
+                    reservedStations,
+                    reservedResourcePoints,
+                    reservedCenterPoints,
+                    candidateOffsets,
+                    slotSpacing,
+                }
             )
             if (!shuttle) {
                 console.warn(`Bot "${this.group}" cannot create a resource shuttle path.`)
@@ -107,6 +146,9 @@ export class BotAI extends Player {
                 console.warn(`Bot "${this.group}" cannot reserve its resource station.`)
                 continue
             }
+            reservedStations.add(shuttle.stationIndex)
+            reservedResourcePoints.push(shuttle.resourcePoint)
+            reservedCenterPoints.push(shuttle.centerPoint)
 
             ship.setShuttlePaths(
                 shuttle.shuttlePaths,

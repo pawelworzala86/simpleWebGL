@@ -1,6 +1,8 @@
 import CenterModel from './model/game/centerModel.js'
 import BattleModel from './model/game/battleModel.js'
-import MovableModel from './model/game/movableModel.js'
+import MovableModel, {
+    createPathfindingObstacle,
+} from './model/game/movableModel.js'
 import ResourceModel from './model/game/resourceModel.js'
 import { createResourceShuttle } from './resourceShuttle.js'
 
@@ -25,10 +27,7 @@ export default function installCommands({
         const movingObstacles = models
             .filter((other) => other instanceof MovableModel &&
                 other !== model && !selectedModels.includes(other))
-            .map((other) => ({
-                position: other.position,
-                bbox: { min: [0, 0, 0], max: [0, 0, 0] },
-            }))
+            .map(createPathfindingObstacle)
         return [...constModels, ...movingObstacles]
     }
 
@@ -65,12 +64,26 @@ export default function installCommands({
             0
         )
         const reservedResourceStations = new Set()
+        const selectedSet = new Set(selectedModels)
+        const reservedResourcePoints = models
+            .filter((model) =>
+                model instanceof MovableModel &&
+                model.resourceModel === resource &&
+                !selectedSet.has(model) &&
+                model.shuttlePaths &&
+                model.shuttlePaths[0].length > 0
+            )
+            .map((model) => {
+                const path = model.shuttlePaths[0]
+                const point = path[path.length - 1]
+                return [point[0], point[1], point[2]]
+            })
         const reservedCenterPoints = []
 
         for (let index = 0; index < selectedModels.length; index++) {
             const model = selectedModels[index]
             const slotOffset = (index - (selectedModels.length - 1) / 2) * slotSpacing
-            const obstacles = getPathfindingObstacles(model)
+            const obstacles = constModels
             const candidateOffsets = [slotOffset]
             for (let offsetStep = 1; offsetStep <= selectedModels.length; offsetStep++) {
                 candidateOffsets.push(
@@ -87,6 +100,7 @@ export default function installCommands({
                 obstacles,
                 {
                     reservedStations: reservedResourceStations,
+                    reservedResourcePoints,
                     reservedCenterPoints,
                     candidateOffsets,
                     slotSpacing,
@@ -102,6 +116,7 @@ export default function installCommands({
                 continue
             }
             reservedResourceStations.add(shuttle.stationIndex)
+            reservedResourcePoints.push(shuttle.resourcePoint)
             reservedCenterPoints.push(shuttle.centerPoint)
             model.setShuttlePaths(
                 shuttle.shuttlePaths,
@@ -154,7 +169,9 @@ export default function installCommands({
                     target,
                     direction,
                     slotOffset,
-                    model
+                    model,
+                    pathFinding,
+                    target.collisionRadius
                 )
                 if (reservedPoints.some((point) =>
                     Math.hypot(
@@ -166,7 +183,8 @@ export default function installCommands({
                 const candidatePath = pathFinding.findPath(
                     model.position,
                     candidatePoint,
-                    getPathfindingObstacles(model)
+                    getPathfindingObstacles(model),
+                    model.collisionRadius
                 )
                 if (!candidatePath) continue
                 attackPoint = candidatePoint
@@ -240,7 +258,8 @@ export default function installCommands({
                 pathFinding.findPath(
                     model.position,
                     destinations[index],
-                    getPathfindingObstacles(model)
+                    getPathfindingObstacles(model),
+                    model.collisionRadius
                 )
             )
             if (candidatePaths.every((path) => path !== null)) {
@@ -254,7 +273,8 @@ export default function installCommands({
                 : pathFinding.findPath(
                     selectedModels[i].position,
                     point,
-                    getPathfindingObstacles(selectedModels[i])
+                    getPathfindingObstacles(selectedModels[i]),
+                    selectedModels[i].collisionRadius
                 )
             selectedModels[i].setPath(path ? path.map(([x, z]) =>
                 vec3.fromValues(x, selectedModels[i].position[1], z)

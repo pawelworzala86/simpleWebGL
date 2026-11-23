@@ -11,10 +11,13 @@ export class PathFinding {
         this.clearance = clearance
     }
 
-    findPath(start, goal, obstacles) {
+    findPath(start, goal, obstacles, moverRadius = 0) {
         if (!start || !goal || !Number.isFinite(start[0]) || !Number.isFinite(start[2]) ||
             !Number.isFinite(goal[0]) || !Number.isFinite(goal[2])) {
             throw new TypeError('Pathfinding start and goal must have finite X and Z coordinates')
+        }
+        if (!Number.isFinite(moverRadius) || moverRadius < 0) {
+            throw new RangeError('Pathfinding mover radius must not be negative')
         }
 
         const halfCell = this.cellSize / 2
@@ -36,10 +39,10 @@ export class PathFinding {
             }
 
             return {
-                minX: minX - this.clearance - halfCell,
-                maxX: maxX + this.clearance + halfCell,
-                minZ: minZ - this.clearance - halfCell,
-                maxZ: maxZ + this.clearance + halfCell,
+                minX: minX - this.clearance - halfCell - moverRadius,
+                maxX: maxX + this.clearance + halfCell + moverRadius,
+                minZ: minZ - this.clearance - halfCell - moverRadius,
+                maxZ: maxZ + this.clearance + halfCell + moverRadius,
             }
         })
 
