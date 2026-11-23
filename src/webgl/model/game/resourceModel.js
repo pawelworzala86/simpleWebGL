@@ -3,6 +3,9 @@ import ModelGLTF from './../../../webgl/model/modelGLTF.js'
 export class ResourceModel extends ModelGLTF{
     constructor(gl){
         super(gl)
+        this.maxHealth = null
+        this.health = null
+        this.damageable = false
         this.gatherTime = 3000
         this.stations = Array.from({ length: 8 }, (_, index) => {
             const angle = index * Math.PI / 4

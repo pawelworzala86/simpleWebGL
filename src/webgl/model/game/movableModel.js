@@ -163,6 +163,15 @@ export class MovableModel extends ModelGLTF{
         this.attackRange = range
     }
 
+    faceTarget(target){
+        const directionX = target.position[0] - this.position[0]
+        const directionZ = target.position[2] - this.position[2]
+        if (Math.hypot(directionX, directionZ) < 1e-8) return
+
+        this.rotationY = Math.atan2(directionX, directionZ)
+        mat4.fromYRotation(this.model, this.rotationY)
+    }
+
     setShuttlePaths(paths, resourceModel, stationIndex){
         this.attackTarget = null
         this.attackRange = 0

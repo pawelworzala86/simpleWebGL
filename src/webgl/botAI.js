@@ -1,8 +1,6 @@
 import BattleModel from './model/game/battleModel.js'
 import MovableModel from './model/game/movableModel.js'
 
-const { mat4 } = glMatrix
-
 export class BotAI {
     constructor(group, entities = []) {
         if (typeof group !== 'string' || group === '' || group === 'player') {
@@ -15,6 +13,7 @@ export class BotAI {
         this.retaliationTarget = null
         this.retaliationUntil = 0
         this.nextShotByShip = new Map()
+        this.targetByShip = new Map()
 
         for (const entity of entities) this.addEntity(entity)
     }
@@ -34,6 +33,7 @@ export class BotAI {
         this.ships = this.ships.filter((ship) => ship !== entity)
         this.buildings = this.buildings.filter((building) => building !== entity)
         this.nextShotByShip.delete(entity)
+        this.targetByShip.delete(entity)
         if (this.retaliationTarget === entity) {
             this.retaliationTarget = null
             this.retaliationUntil = 0
@@ -48,23 +48,53 @@ export class BotAI {
     }
 
     update(time, worldModels) {
-        const target = this.retaliationTarget
-        if (!target || time >= this.retaliationUntil || !worldModels.includes(target)) {
+        if (time >= this.retaliationUntil ||
+            !worldModels.includes(this.retaliationTarget) ||
+            this.retaliationTarget?.group !== 'player' ||
+            this.retaliationTarget?.health <= 0) {
             this.retaliationTarget = null
-            return []
         }
 
+        const playerTargets = worldModels.filter((model) =>
+            model.group === 'player' &&
+            model.damageable !== false &&
+            model.health > 0
+        )
         const shots = []
         for (const ship of this.ships) {
             if (!(ship instanceof BattleModel) || !worldModels.includes(ship)) continue
+
+            const isInSight = (target) => Math.hypot(
+                ship.position[0] - target.position[0],
+                ship.position[2] - target.position[2]
+            ) <= 3
+            let target = this.retaliationTarget &&
+                playerTargets.includes(this.retaliationTarget) &&
+                isInSight(this.retaliationTarget)
+                ? this.retaliationTarget
+                : this.targetByShip.get(ship)
+            if (!target || !playerTargets.includes(target) || !isInSight(target)) {
+                target = playerTargets
+                    .filter(isInSight)
+                    .sort((first, second) =>
+                        Math.hypot(
+                            ship.position[0] - first.position[0],
+                            ship.position[2] - first.position[2]
+                        ) - Math.hypot(
+                            ship.position[0] - second.position[0],
+                            ship.position[2] - second.position[2]
+                        )
+                    )[0]
+            }
+            if (!target) {
+                this.targetByShip.delete(ship)
+                continue
+            }
+
+            this.targetByShip.set(ship, target)
             if (time < (this.nextShotByShip.get(ship) || 0)) continue
 
-            const directionX = target.position[0] - ship.position[0]
-            const directionZ = target.position[2] - ship.position[2]
-            if (Math.hypot(directionX, directionZ) < 1e-8) continue
-
-            ship.rotationY = Math.atan2(directionX, directionZ)
-            mat4.fromYRotation(ship.model, ship.rotationY)
+            ship.faceTarget(target)
             this.nextShotByShip.set(ship, time + 900)
             shots.push({ shooter: ship, target })
         }

@@ -39,6 +39,12 @@ export default function createSelection({
         updateSelectionPanel()
     }
 
+    function removeModel(model) {
+        if (selectedModels.includes(model)) {
+            setSelectedModels(selectedModels.filter((selected) => selected !== model))
+        }
+    }
+
     function updateSelectionPanel() {
         const count = selectedModels.length
         selectionPanel.hidden = count === 0
@@ -290,5 +296,6 @@ export default function createSelection({
         getSelectedModels: () => selectedModels,
         getCanvasPixel,
         getGroundPoint,
+        removeModel,
     }
 }

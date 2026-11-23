@@ -8,8 +8,21 @@ export class Model extends Scene{
         super(gl)
         this.position = vec3.create()
         this._scale = 1
+        this.maxHealth = 100
+        this.health = this.maxHealth
+        this.damageable = true
         this.material = new DefaultMaterial(gl)
         this._defaultMaterial = this.material
+    }
+
+    takeDamage(amount){
+        if (!this.damageable) return false
+        if (!Number.isFinite(amount) || amount <= 0) {
+            throw new RangeError('Damage must be a positive finite number')
+        }
+
+        this.health = Math.max(0, this.health - amount)
+        return this.health === 0
     }
 
     get scale(){

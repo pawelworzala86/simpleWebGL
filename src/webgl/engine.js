@@ -43,6 +43,9 @@ class Engine {
         const redMaterial = new DefaultMaterial(gl)
         redMaterial.uniforms.color = [1.0, 0.0, 0.0]
 
+        const botMaterial = new DefaultMaterial(gl)
+        botMaterial.uniforms.color = [0.7, 0.7, 1.0]
+
         const panelModel = await PanelModel.create(gl, [-1.0, -1.0, 1.0, 1.0], 'panel')
         const ground = await Geometry.createGround(gl, 10, 20)
 
@@ -72,11 +75,12 @@ class Engine {
         battleModel.group = 'player'
 
         const botBatttleModel = await BattleModel.create(gl)
-        botBatttleModel.position = [-6, 0, -4]
+        botBatttleModel.position = [-8, 0, -4]
         botBatttleModel.displayName = 'BATTLE-BOT-01'
         botBatttleModel.displayRole = 'STATEK BATTLE'
         botBatttleModel.displayClass = 'BATTLE'
         botBatttleModel.group = 'bot-01'
+        botBatttleModel.material = botMaterial
 
         const resourceModel = await ResourceModel.create(gl)
         resourceModel.position = [4, 0, -2]
@@ -189,6 +193,25 @@ class Engine {
         const weaponCooldowns = new Map()
         const projectiles = []
 
+        function removeModel(model) {
+            const modelIndex = models.indexOf(model)
+            if (modelIndex === -1) return
+
+            models.splice(modelIndex, 1)
+            const selectableIndex = modelsToSelect.indexOf(model)
+            if (selectableIndex !== -1) modelsToSelect.splice(selectableIndex, 1)
+            const constantIndex = constModels.indexOf(model)
+            if (constantIndex !== -1) constModels.splice(constantIndex, 1)
+            const intersectIndex = intersect.models.indexOf(model)
+            if (intersectIndex !== -1) intersect.models.splice(intersectIndex, 1)
+            selection.removeModel(model)
+
+            for (const other of models) {
+                if (other.attackTarget === model) other.setPath([])
+            }
+            for (const botAI of botAIs) botAI.removeEntity(model)
+        }
+
         function spawnProjectile(shooter, target) {
             if (projectiles.length >= 128) return false
 
@@ -243,6 +266,7 @@ class Engine {
                 if (model.pathIndex < model.path.length ||
                     distance > model.attackRange) continue
 
+                model.faceTarget(target)
                 let weapon = weaponCooldowns.get(model)
                 if (!weapon || weapon.target !== target) {
                     weapon = { target, nextShot: 0 }
@@ -274,10 +298,14 @@ class Engine {
                 const distance = Math.hypot(directionX, directionY, directionZ)
                 const step = 12 * deltaTime
 
-                if (distance <= step + Math.max(0.06, target.collisionRadius * 0.2)) {
+                const targetRadius = Number.isFinite(target.collisionRadius)
+                    ? target.collisionRadius
+                    : 0
+                if (distance <= step + Math.max(0.06, targetRadius * 0.2)) {
                     if (target.group !== 'player') {
                         botAIsByGroup.get(target.group)?.onShipHit(projectile.source, time)
                     }
+                    if (target.takeDamage(25)) removeModel(target)
                     projectiles.splice(index, 1)
                     continue
                 }
