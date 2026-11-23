@@ -1,4 +1,6 @@
 import CenterModel from './model/game/centerModel.js'
+import BattleModel from './model/game/battleModel.js'
+import MovableModel from './model/game/movableModel.js'
 import ResourceModel from './model/game/resourceModel.js'
 
 export default function installCommands({
@@ -18,8 +20,9 @@ export default function installCommands({
 
     function getPathfindingObstacles(model) {
         const selectedModels = getSelectedModels()
-        const movingObstacles = modelsToSelect
-            .filter((other) => other !== model && !selectedModels.includes(other))
+        const movingObstacles = models
+            .filter((other) => other instanceof MovableModel &&
+                other !== model && !selectedModels.includes(other))
             .map((other) => ({
                 position: other.position,
                 bbox: { min: [0, 0, 0], max: [0, 0, 0] },
@@ -202,13 +205,101 @@ export default function installCommands({
         }
     }
 
+    function sendSelectedBattleShipsToBot(target) {
+        const selectedModels = getSelectedModels().filter((model) =>
+            model instanceof BattleModel && model.group === 'player'
+        )
+        if (selectedModels.length === 0) return
+
+        const averageDirection = selectedModels.reduce((direction, model) => {
+            direction[0] += model.position[0] - target.position[0]
+            direction[1] += model.position[2] - target.position[2]
+            return direction
+        }, [0, 0])
+        const directionLength = Math.hypot(...averageDirection)
+        const direction = directionLength > 1e-8
+            ? [
+                averageDirection[0] / directionLength,
+                averageDirection[1] / directionLength,
+            ]
+            : [1, 0]
+        const slotSpacing = selectedModels.reduce(
+            (maximum, model) => Math.max(maximum, model.collisionRadius * 2 + 0.16),
+            0
+        )
+        const reservedPoints = []
+
+        for (let index = 0; index < selectedModels.length; index++) {
+            const model = selectedModels[index]
+            const preferredOffset =
+                (index - (selectedModels.length - 1) / 2) * slotSpacing
+            const candidateOffsets = [preferredOffset]
+            for (let step = 1; step <= selectedModels.length; step++) {
+                candidateOffsets.push(
+                    preferredOffset - step * slotSpacing,
+                    preferredOffset + step * slotSpacing
+                )
+            }
+
+            let attackPoint = null
+            let path = null
+            for (const slotOffset of candidateOffsets) {
+                const candidatePoint = getApproachPoint(
+                    target,
+                    direction,
+                    slotOffset,
+                    model
+                )
+                if (reservedPoints.some((point) =>
+                    Math.hypot(
+                        point[0] - candidatePoint[0],
+                        point[2] - candidatePoint[2]
+                    ) < slotSpacing
+                )) continue
+
+                const candidatePath = pathFinding.findPath(
+                    model.position,
+                    candidatePoint,
+                    getPathfindingObstacles(model)
+                )
+                if (!candidatePath) continue
+                attackPoint = candidatePoint
+                path = candidatePath
+                break
+            }
+
+            if (!path) {
+                console.warn('Cannot create an attack path for a selected battle ship.')
+                continue
+            }
+
+            reservedPoints.push(attackPoint)
+            const attackRange = Math.hypot(
+                attackPoint[0] - target.position[0],
+                attackPoint[2] - target.position[2]
+            ) + 0.25
+            model.setAttackTarget(
+                target,
+                path.map(([x, z]) => vec3.fromValues(x, model.position[1], z)),
+                attackRange
+            )
+        }
+    }
+
     canvas.addEventListener('contextmenu', (event) => {
         event.preventDefault()
         const selectedModels = getSelectedModels()
-        if (selectedModels.length === 0) return
 
         const [pixelX, pixelY] = getCanvasPixel(event)
         const hit = intersect.get(pixelX, pixelY, projection, camera.getViewMatrix())
+        if (hit && hit.model instanceof MovableModel &&
+            typeof hit.model.group === 'string' &&
+            hit.model.group !== 'player') {
+            sendSelectedBattleShipsToBot(hit.model)
+            return
+        }
+
+        if (selectedModels.length === 0) return
         if (hit && hit.model instanceof ResourceModel) {
             sendSelectedModelsToResource(hit.model)
             return

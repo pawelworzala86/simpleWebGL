@@ -279,6 +279,8 @@ export default function createSelection({
 
         const [pixelX, pixelY] = getCanvasPixel(event)
         const hit = intersect.get(pixelX, pixelY, projection, camera.getViewMatrix())
+        if (hit && typeof hit.model.group === 'string' &&
+            hit.model.group !== 'player') return
         setSelectedModels(hit && modelsToSelect.includes(hit.model) ? [hit.model] : [])
     })
 

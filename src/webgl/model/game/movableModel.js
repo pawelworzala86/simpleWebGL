@@ -110,6 +110,8 @@ export class MovableModel extends ModelGLTF{
         this.gatheredResources = null
         this.gatherRequestId = 0
         this.isPlayerControlled = false
+        this.attackTarget = null
+        this.attackRange = 0
     }
 
     static async create(gl,name=this.modelName,scale=this.modelScale){
@@ -142,6 +144,8 @@ export class MovableModel extends ModelGLTF{
     }
 
     setPath(path){
+        this.attackTarget = null
+        this.attackRange = 0
         this.gatherRequestId++
         if (this.resourceModel) this.resourceModel.releaseStation(this)
         this.shuttlePaths = null
@@ -153,7 +157,15 @@ export class MovableModel extends ModelGLTF{
         this.pathIndex = 0
     }
 
+    setAttackTarget(target, path, range){
+        this.setPath(path)
+        this.attackTarget = target
+        this.attackRange = range
+    }
+
     setShuttlePaths(paths, resourceModel, stationIndex){
+        this.attackTarget = null
+        this.attackRange = 0
         this.gatherRequestId++
         if (this.resourceModel && this.resourceModel !== resourceModel) {
             this.resourceModel.releaseStation(this)

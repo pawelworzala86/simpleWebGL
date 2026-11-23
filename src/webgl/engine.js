@@ -1,4 +1,5 @@
 import DefaultMaterial from './material/defaultMaterial.js'
+import Mesh from './mesh.js'
 import PanelModel from './model/panelModel.js'
 import Terrain from './model/terrain.js'
 import ShipModel from './model/game/shipModel.js'
@@ -42,26 +43,39 @@ class Engine {
         redMaterial.uniforms.color = [1.0, 0.0, 0.0]
 
         const panelModel = await PanelModel.create(gl, [-1.0, -1.0, 1.0, 1.0], 'panel')
-        const centerModel = await CenterModel.create(gl)
         const ground = await Geometry.createGround(gl, 10, 20)
+
+
+        const centerModel = await CenterModel.create(gl)
+        centerModel.group = 'player'
 
         const shipModel = await ShipModel.create(gl)
         shipModel.position = [5, 0, 5]
         shipModel.displayName = 'KOPARKA-01'
         shipModel.displayRole = 'STATEK WYDOBYWCZY'
         shipModel.displayClass = 'WYDOBYWCZA'
+        shipModel.group = 'player'
 
         const shipModel2 = await ShipModel.create(gl)
         shipModel2.position = [4, 0, 4]
         shipModel2.displayName = 'TRANSPORT-02'
         shipModel2.displayRole = 'STATEK TRANSPORTOWY'
         shipModel2.displayClass = 'TRANSPORTOWA'
+        shipModel2.group = 'player'
 
         const battleModel = await BattleModel.create(gl)
         battleModel.position = [-4, 0, -2]
         battleModel.displayName = 'BATTLE-01'
         battleModel.displayRole = 'STATEK BATTLE'
         battleModel.displayClass = 'BATTLE'
+        battleModel.group = 'player'
+
+        const botBatttleModel = await BattleModel.create(gl)
+        botBatttleModel.position = [-6, 0, -4]
+        botBatttleModel.displayName = 'BATTLE-BOT-01'
+        botBatttleModel.displayRole = 'STATEK BATTLE'
+        botBatttleModel.displayClass = 'BATTLE'
+        botBatttleModel.group = 'bot-01'
 
         const resourceModel = await ResourceModel.create(gl)
         resourceModel.position = [4, 0, -2]
@@ -73,8 +87,12 @@ class Engine {
             shipModel2,
             resourceModel,
             battleModel,
+            botBatttleModel,
         ]
         const modelsToSelect = [shipModel, shipModel2, battleModel]
+        const botModels = models.filter((model) =>
+            typeof model.group === 'string' && model.group !== 'player'
+        )
         const constModels = [centerModel, resourceModel]
 
         //const modelGLTF = await ModelGLTF.create(gl, 'box')
@@ -115,6 +133,7 @@ class Engine {
         intersect.mode = 'BBOX'
         for (const model of constModels) intersect.addModel(model)
         for (const model of modelsToSelect) intersect.addModel(model)
+        for (const model of botModels) intersect.addModel(model)
 
         const selection = createSelection({
             canvas,
@@ -140,6 +159,20 @@ class Engine {
             getGroundPoint: selection.getGroundPoint,
         })
 
+        const laserMaterial = new DefaultMaterial(gl)
+        laserMaterial.uniforms.color = [1.0, 0.12, 0.04]
+        const laserGeometry = {
+            position: new Float32Array(12),
+            indices: [0, 1, 2, 3],
+        }
+        const laserMesh = await Mesh.create(
+            gl,
+            laserMaterial,
+            laserGeometry,
+            gl.LINES
+        )
+        const laserEffects = new Map()
+
         let frame = 0
         let lastTime = 0
 
@@ -164,6 +197,47 @@ class Engine {
             }
             for (const model of models) {
                 model.render(uniforms)
+            }
+
+            for (const model of models) {
+                const target = model.attackTarget
+                if (!target || !models.includes(target)) continue
+
+                const distance = Math.hypot(
+                    model.position[0] - target.position[0],
+                    model.position[2] - target.position[2]
+                )
+                if (model.pathIndex < model.path.length ||
+                    distance > model.attackRange) continue
+
+                let effect = laserEffects.get(model)
+                if (!effect || effect.target !== target) {
+                    effect = { target, nextShot: 0, visibleUntil: 0 }
+                    laserEffects.set(model, effect)
+                }
+                if (time >= effect.nextShot) {
+                    effect.nextShot = time + 550
+                    effect.visibleUntil = time + 160
+                }
+                if (time >= effect.visibleUntil) continue
+
+                const sideX = Math.cos(model.rotationY) * 0.035
+                const sideZ = -Math.sin(model.rotationY) * 0.035
+                const startX = model.position[0] +
+                    Math.sin(model.rotationY) * model.collisionRadius
+                const startZ = model.position[2] +
+                    Math.cos(model.rotationY) * model.collisionRadius
+                const positions = new Float32Array([
+                    startX - sideX, model.position[1] + 0.12, startZ - sideZ,
+                    target.position[0] - sideX, target.position[1] + 0.12,
+                    target.position[2] - sideZ,
+                    startX + sideX, model.position[1] + 0.12, startZ + sideZ,
+                    target.position[0] + sideX, target.position[1] + 0.12,
+                    target.position[2] + sideZ,
+                ])
+                gl.bindBuffer(gl.ARRAY_BUFFER, laserMesh.buffer.position)
+                gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW)
+                laserMesh.render(uniforms)
             }
 
             setScene(null)
