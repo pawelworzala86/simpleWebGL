@@ -4,7 +4,8 @@ import Engine from './webgl/engine.js'
 
 
 
-const {rootStats, rootScope} = RED.init()
 
-const engine = new Engine(rootStats);
-engine.run();
+const engine = new Engine();
+const playerStats = engine.run();
+
+RED.init(playerStats)

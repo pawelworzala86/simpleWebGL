@@ -42,8 +42,6 @@ const mainPanel = document.querySelector('#mainPanel')
 
 
 
-export function init(){
-    compile(mainPanel, rootStats)
-    
-    return { rootStats, rootScope } 
+export function init(playerStats){
+    compile(mainPanel, playerStats)
 }

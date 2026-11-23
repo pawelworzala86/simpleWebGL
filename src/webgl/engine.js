@@ -16,12 +16,12 @@ import createSelection from './selection.js'
 import installCommands from './commands.js'
 import updateMovements from './movement.js'
 import BotAI from './botAI.js'
+import Player from './player.js'
 
 const { mat4 } = glMatrix
 
 class Engine {
-    constructor(rootStats) {
-        this.rootStats = rootStats
+    constructor() {
         const canvas = document.createElement('canvas')
         canvas.width = window.innerWidth * 0.95
         canvas.height = window.innerHeight * 0.95
@@ -38,9 +38,20 @@ class Engine {
     }
 
     async run() {
-        const { gl, canvas, rootStats } = this
+        const { gl, canvas } = this
 
         const panelModel = await PanelModel.create(gl, [-1.0, -1.0, 1.0, 1.0], 'panel')
+
+        this.players = []
+
+        const player = new Player('Player-01')
+        const bot = new Player('Bot-01')
+
+        this.players.push(player)
+        this.players.push(bot)
+
+
+        const rootStats = player.resources.storage
 
 
 
@@ -57,7 +68,7 @@ class Engine {
 
 
         const centerModel = await CenterModel.create(gl)
-        centerModel.group = 'player'
+        centerModel.group = player.name
         centerModel.material = playerMaterial
 
         const shipModel = await ShipModel.create(gl)
@@ -65,7 +76,7 @@ class Engine {
         shipModel.displayName = 'KOPARKA-01'
         shipModel.displayRole = 'STATEK WYDOBYWCZY'
         shipModel.displayClass = 'WYDOBYWCZA'
-        shipModel.group = 'player'
+        shipModel.group = player.name
         shipModel.material = playerMaterial
 
         const shipModel2 = await ShipModel.create(gl)
@@ -73,7 +84,7 @@ class Engine {
         shipModel2.displayName = 'TRANSPORT-02'
         shipModel2.displayRole = 'STATEK TRANSPORTOWY'
         shipModel2.displayClass = 'TRANSPORTOWA'
-        shipModel2.group = 'player'
+        shipModel2.group = player.name
         shipModel2.material = playerMaterial
 
         const battleModel = await BattleModel.create(gl)
@@ -81,7 +92,7 @@ class Engine {
         battleModel.displayName = 'BATTLE-01'
         battleModel.displayRole = 'STATEK BATTLE'
         battleModel.displayClass = 'BATTLE'
-        battleModel.group = 'player'
+        battleModel.group = player.name
         battleModel.material = playerMaterial
 
 
@@ -89,7 +100,7 @@ class Engine {
 
         const botCenterModel = await CenterModel.create(gl)
         botCenterModel.position = [-16, 0, -10]
-        botCenterModel.group = 'bot-01'
+        botCenterModel.group = bot.name
         botCenterModel.material = botMaterial
 
         const botBatttleModel = await BattleModel.create(gl)
@@ -97,7 +108,7 @@ class Engine {
         botBatttleModel.displayName = 'BATTLE-BOT-01'
         botBatttleModel.displayRole = 'STATEK BATTLE'
         botBatttleModel.displayClass = 'BATTLE'
-        botBatttleModel.group = 'bot-01'
+        botBatttleModel.group = bot.name
         botBatttleModel.material = botMaterial
 
         const botShipModel = await ShipModel.create(gl)
@@ -105,7 +116,7 @@ class Engine {
         botShipModel.displayName = 'KOPARKA-BOT-01'
         botShipModel.displayRole = 'STATEK WYDOBYWCZY'
         botShipModel.displayClass = 'WYDOBYWCZA'
-        botShipModel.group = 'bot-01'
+        botShipModel.group = bot.name
         botShipModel.material = botMaterial
 
 
@@ -115,7 +126,6 @@ class Engine {
 
         const resourceModel2 = await ResourceModel.create(gl)
         resourceModel2.position = [-8, 0, -6]
-        resourceModel2.group = 'bot-01'
 
 
 
@@ -371,6 +381,8 @@ class Engine {
         }
 
         animate(0)
+
+        return player.resources.storage
     }
 }
 
