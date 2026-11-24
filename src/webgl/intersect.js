@@ -118,7 +118,7 @@ export class Intersect {
         return model
     }
 
-    get(x, y, projection, viewMatrix) {
+    get(x, y, projection, viewMatrix, models = this.models) {
         if (this.mode !== 'MESH' && this.mode !== 'BBOX') {
             throw new RangeError(`Unsupported intersection mode: ${this.mode}`)
         }
@@ -186,7 +186,7 @@ export class Intersect {
             testGeometry(node.geometry, modelMatrix, owner)
         }
 
-        for (const model of this.models) {
+        for (const model of models) {
             if (this.mode === 'BBOX') {
                 const geometry = getBoundingBoxGeometry(model.bbox)
                 const modelMatrix = getNodeMatrix(model, identity)

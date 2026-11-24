@@ -8,7 +8,7 @@ function change(element, scope, attr){
     })
 }
 
-Directives["change"]=['change']
+Directives["change"] = change
 
 const ret = 1
 export default ret

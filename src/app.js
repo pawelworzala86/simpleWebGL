@@ -5,7 +5,7 @@ import Engine from './webgl/engine.js'
 
 
 
-const engine = new Engine();
-const playerStats = await engine.run();
+export const engine = new Engine();
+const {rootStats, settings} = await engine.run();
 
-RED.init(playerStats)
+RED.init(rootStats, settings)

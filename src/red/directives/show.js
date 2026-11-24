@@ -1,25 +1,30 @@
 import Directives from './../directives.js'
-    
-function show(element, scope, attr){
-    const change = (val)=>{
-        let rif = (function (attribute) {
-            return eval(attribute) ? true : false;
-        }.bind(scope))(attr)
-        if (rif) {
-            element.classList.remove("hide");
-        } else {
-            element.classList.add("hide");
-        }
-    };
-    const regex = new RegExp("this.([a-zA-Z0-9]+)");
-    let matches = regex.exec(attr)
-    scope.watch(matches[1], val => {
-        change(val)
-    });
-    change()
+
+function updateVisibility(element, scope, attr) {
+    const isVisible = (function (attribute) {
+        return Boolean(eval(attribute))
+    }.bind(scope))(attr)
+    element.classList.toggle('hide', !isVisible)
 }
 
-Directives["show"]=show
+function show(element, scope, attr) {
+    const match = /\bthis\.([a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*)/.exec(attr)
+    const update = updateVisibility.bind(null, element, scope, attr)
+
+    if (match) {
+        const path = match[1].split('.')
+        const property = path.pop()
+        const watchedScope = path.reduce((current, key) => current[key], scope)
+        if (!watchedScope || typeof watchedScope.watch !== 'function') {
+            throw new TypeError(`Cannot watch red-show expression "${match[0]}".`)
+        }
+        watchedScope.watch(property, update)
+    }
+
+    update()
+}
+
+Directives['show'] = show
 
 const ret = 1
 export default ret

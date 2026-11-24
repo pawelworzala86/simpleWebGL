@@ -5,6 +5,7 @@ import Terrain from './model/terrain.js'
 import ShipModel from './model/game/shipModel.js'
 import BattleModel from './model/game/battleModel.js'
 import ResourceModel from './model/game/resourceModel.js'
+import BuildingModel from './model/game/buildingModel.js'
 import CenterModel from './model/game/centerModel.js'
 import Geometry from './geometry.js'
 import RenderBuffer from './renderBuffer.js'
@@ -17,11 +18,14 @@ import installCommands from './commands.js'
 import updateMovements from './movement.js'
 import BotAI from './botAI.js'
 import Player from './player.js'
+import Scope from './../red/factories/scope.js'
 
 const { mat4 } = glMatrix
 
 class Engine {
     constructor() {
+        this.activeBuilding = null
+        this.onBuildingChange = null
         const canvas = document.createElement('canvas')
         canvas.width = window.innerWidth * 0.95
         canvas.height = window.innerHeight * 0.95
@@ -35,6 +39,25 @@ class Engine {
         }
         this.models = []
         this.cameras = []
+        this.settings = new Scope({
+            activeBuilding: null,
+        })
+    }
+
+    setBuilding(building) {
+        if (building !== null && !(building instanceof BuildingModel)) {
+            throw new TypeError('Active building must be a BuildingModel or null.')
+        }
+        const onBuildingChange = this.onBuildingChange
+        if (onBuildingChange !== null && typeof onBuildingChange !== 'function') {
+            throw new TypeError('onBuildingChange must be a function or null.')
+        }
+        const previousBuilding = this.activeBuilding
+        this.settings.activeBuilding = building
+        this.activeBuilding = building
+        if (previousBuilding !== building && onBuildingChange !== null) {
+            onBuildingChange(building, previousBuilding)
+        }
     }
 
     async run() {
@@ -204,6 +227,7 @@ class Engine {
             canvas,
             redMaterial,
             modelsToSelect,
+            setBuilding: (building) => this.setBuilding(building),
             intersect,
             projection,
             camera,
@@ -390,7 +414,7 @@ class Engine {
 
         animate(0)
 
-        return rootStats
+        return {rootStats,settings:this.settings}
     }
 }
 

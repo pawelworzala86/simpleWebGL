@@ -1,44 +1,32 @@
 import Directives from './../directives.js'
-    
-function clas(element, scope, attr){
-    const change = () => {
-        let add = []
-        let del = []
 
-        const obj = (function (attribute) {
-            return eval("(()=>{return " + attribute + "})()")
-        }.bind(scope))(attr)
-
-        Object.keys(obj).forEach(key => {
-            if (obj[key]) {
-                add.push(key)
-            } else {
-                del.push(key)
-            }
-        })
-        add.forEach(clas => {
-            element.classList.add(clas)
-        })
-        del.forEach(clas => {
-            element.classList.remove(clas)
-        })
-    }
-    change()
-
-    const obj = (function (attribute) {
-        return eval("(()=>{return " + attribute + "})()")
+function updateClasses(element, scope, attr) {
+    const classes = (function (attribute) {
+        return eval(attribute)
     }.bind(scope))(attr)
-
-    const regex = new RegExp("this.([a-zA-Z0-9]+)");
-    let matches = regex.exec(attr)
-    if (matches) {
-        scope.watch(matches[1], val => {
-            change(val)
-        })
+    for (const [className, enabled] of Object.entries(classes)) {
+        element.classList.toggle(className, Boolean(enabled))
     }
 }
 
-Directives["class"]=clas
+function clas(element, scope, attr) {
+    const match = /\bthis\.([a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*)/.exec(attr)
+    const update = updateClasses.bind(null, element, scope, attr)
+
+    if (match) {
+        const path = match[1].split('.')
+        const property = path.pop()
+        const watchedScope = path.reduce((current, key) => current[key], scope)
+        if (!watchedScope || typeof watchedScope.watch !== 'function') {
+            throw new TypeError(`Cannot watch red-class expression "${match[0]}".`)
+        }
+        watchedScope.watch(property, update)
+    }
+
+    update()
+}
+
+Directives['class'] = clas
 
 const ret = 1
 export default ret

@@ -17,12 +17,6 @@ function colorizeText(code){
       code = code.replace(define[0],define[1])
     }
 
-    const nodes=Object.keys(node)
-    console.log(nodes)
-    for(const nd of nodes){
-      code = code.replace(new RegExp(nd,"gm"),"<node>"+nd+"</node>")
-    }
-
     return code
 
 }

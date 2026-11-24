@@ -22,8 +22,6 @@ Scope.prototype.watch = function (prop, handler) {
                 })
             },
         })
-    }else{
-        self.handlers[prop].push(handler)
     }
 }
 

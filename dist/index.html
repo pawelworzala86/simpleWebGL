@@ -61,7 +61,7 @@
          <div id="selectionContent" class="selection-content" aria-live="polite"></div>
          <div class="hud-footer"><span>STATUS JEDNOSTKI <span class="footer-divider">/</span> PODGLĄD TAKTYCZNY</span><span>ŁĄCZE DOWODZENIA <span class="flow-line"></span> AKTYWNE</span></div>
       </aside>
-      <aside id="buildingPanel" aria-label="Produkcja jednostek">
+      <aside red-if="this.activeBuilding!==null" id="buildingPanel" aria-label="Produkcja jednostek">
          <div class="building-heading">
             <div class="building-icon" aria-hidden="true">
                <svg viewBox="0 0 24 24"><path d="M3.5 20.5h17M5.5 20.5V9.2L12 4l6.5 5.2v11.3M9 20.5v-6h6v6M8 10.5h.01M12 10.5h.01M16 10.5h.01"/></svg>
@@ -104,6 +104,9 @@ canvas {
    display: block;
    width: 100%;
    height: 100%;
+}
+.hide{
+   display: none;
 }
 #mainPanel {
    --cyan: #66eaff;

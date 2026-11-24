@@ -1,31 +1,30 @@
 import Directives from './../directives.js'
-    
-function iff(element, scope, attr){
-    const change = (val) => {
-        let rif = (function (attribute) {
-            return eval(attribute)
-        }.bind(scope))(attr)
-        if (rif) {
-            element.classList.remove("hide")
-        } else {
-            element.classList.add("hide")
-        }
-    };
-    const regex = new RegExp("this.([a-zA-Z0-9\.]+)")
-    let matches = regex.exec(attr)
-    if(matches[1].indexOf('.')>-1){
-        scope[matches[1].split('.')[0]].watch(matches[1].split('.')[1], (val,newVal) => {
-            change(newVal);
-        })
-    }else{
-        scope.watch(matches[1], (val,newVal) => {
-            change(newVal);
-        })
-    }
-    change()
+
+function updateIf(element, scope, attr) {
+    const isVisible = (function (attribute) {
+        return Boolean(eval(attribute))
+    }.bind(scope))(attr)
+    element.classList.toggle('hide', !isVisible)
 }
 
-Directives["if"]=iff
+function iff(element, scope, attr) {
+    const match = /\bthis\.([a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*)/.exec(attr)
+    const update = updateIf.bind(null, element, scope, attr)
+
+    if (match) {
+        const path = match[1].split('.')
+        const property = path.pop()
+        const watchedScope = path.reduce((current, key) => current[key], scope)
+        if (!watchedScope || typeof watchedScope.watch !== 'function') {
+            throw new TypeError(`Cannot watch red-if expression "${match[0]}".`)
+        }
+        watchedScope.watch(property, update)
+    }
+
+    update()
+}
+
+Directives['if'] = iff
 
 const ret = 1
 export default ret

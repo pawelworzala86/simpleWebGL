@@ -37,11 +37,14 @@ const rootScope = getRootScope()
 
 var body = document.querySelector('body')
 
-const mainPanel = document.querySelector('#mainPanel')
 
 
 
 
-export function init(playerStats){
-    compile(mainPanel, playerStats)
+
+export function init(rootStats, settings){
+    const mainPanel = document.querySelector('#mainPanel')
+    const buildingPanel = document.querySelector('#buildingPanel')
+    compile(mainPanel, rootStats)
+    compile(buildingPanel, settings)
 }

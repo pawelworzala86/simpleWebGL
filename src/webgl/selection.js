@@ -1,7 +1,10 @@
+import BuildingModel from './model/game/buildingModel.js'
+
 export default function createSelection({
     canvas,
     redMaterial,
     modelsToSelect,
+    setBuilding,
     intersect,
     projection,
     camera,
@@ -269,6 +272,7 @@ export default function createSelection({
                     bounds.right >= left && bounds.left <= right &&
                     bounds.bottom >= top && bounds.top <= bottom
             })
+            setBuilding(null)
             setSelectedModels(selected)
             suppressNextClick = event.target === canvas
         }
@@ -285,7 +289,26 @@ export default function createSelection({
         }
 
         const [pixelX, pixelY] = getCanvasPixel(event)
-        const hit = intersect.get(pixelX, pixelY, projection, camera.getViewMatrix())
+        const viewMatrix = camera.getViewMatrix()
+        const buildingModels = intersect.models.filter(
+            (model) => model instanceof BuildingModel
+        )
+        const buildingHit = intersect.get(
+            pixelX,
+            pixelY,
+            projection,
+            viewMatrix,
+            buildingModels
+        )
+        const building = buildingHit && buildingHit.model.group === playerGroup
+            ? buildingHit.model
+            : null
+        setBuilding(building)
+        if (building) {
+            setSelectedModels([])
+            return
+        }
+        const hit = intersect.get(pixelX, pixelY, projection, viewMatrix)
         if (hit && typeof hit.model.group === 'string' &&
             hit.model.group !== playerGroup) return
         setSelectedModels(hit && modelsToSelect.includes(hit.model) ? [hit.model] : [])
