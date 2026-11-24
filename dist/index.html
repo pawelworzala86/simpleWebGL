@@ -22,7 +22,7 @@
                   <div class="resource-value">{{energy}}<span class="value-suffix">%</span></div>
                   <div class="resource-meta"><span class="positive">+24</span> / min <span class="meta-separator">·</span> sieć stabilna</div>
                </div>
-               <div class="energy-meter" aria-hidden="true"><span></span></div>
+               <!--<div class="energy-meter" aria-hidden="true"><span></span></div>-->
             </section>
             <section class="resource-card metal" aria-label="Metal: 12 480 jednostek, produkcja plus 42 na minutę">
                <div class="resource-icon" aria-hidden="true">
@@ -75,11 +75,15 @@ canvas {
    --muted: #79a8b4;
    position: fixed;
    z-index: 5;
-   top: 20px;
+   top: 12px;
    left: 50%;
-   width: min(760px, calc(100vw - 32px));
+   display: grid;
+   grid-template-columns: minmax(190px, 230px) minmax(0, 1fr);
+   align-items: center;
+   gap: 12px;
+   width: min(960px, calc(100vw - 32px));
    transform: translateX(-50%);
-   padding: 14px 20px 10px;
+   padding: 7px 14px;
    overflow: hidden;
    border: 1px solid rgba(102, 234, 255, .35);
    background:
@@ -197,8 +201,8 @@ canvas {
 .heading-divider { padding: 0 5px; font-weight: 400; }
 .system-status { display: flex; align-items: center; gap: 7px; margin-left: auto; color: #8eb3bc; font: 600 9px/1 'Bahnschrift', 'Arial Narrow', sans-serif; letter-spacing: 1.5px; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #8dffbd; box-shadow: 0 0 8px rgba(141, 255, 189, .8); }
-.resource-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 11px; border-top: 1px solid rgba(102, 234, 255, .2); border-bottom: 1px solid rgba(102, 234, 255, .15); }
-.resource-card { position: relative; display: flex; align-items: center; min-width: 0; min-height: 81px; padding: 11px 12px; }
+.resource-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; margin-top: 0; border-top: 0; border-bottom: 0; }
+.resource-card { position: relative; display: flex; align-items: center; min-width: 0; min-height: 58px; padding: 6px 10px; }
 .resource-card + .resource-card { border-left: 1px solid rgba(102, 234, 255, .16); }
 .resource-icon { display: grid; flex: 0 0 32px; width: 32px; height: 32px; place-items: center; margin-right: 11px; color: var(--cyan); border: 1px solid rgba(102, 234, 255, .26); background: rgba(57, 204, 230, .055); }
 .resource-icon svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
@@ -213,7 +217,7 @@ canvas {
 .meta-separator { padding: 0 2px; color: #466c77; }
 .energy-meter { position: absolute; right: 12px; bottom: 10px; left: 12px; height: 2px; background: rgba(102, 234, 255, .12); }
 .energy-meter span { display: block; width: 86%; height: 100%; background: var(--cyan); box-shadow: 0 0 7px rgba(102, 234, 255, .75); }
-.resource-spark { display: flex; align-items: end; gap: 2px; height: 24px; margin: 15px 0 0 auto; padding-left: 7px; opacity: .7; }
+.resource-spark { display: flex; align-items: end; gap: 2px; height: 20px; margin: 0 0 0 auto; padding-left: 7px; opacity: .7; }
 .resource-spark i { width: 2px; height: 35%; background: var(--cyan); }
 .resource-spark i:nth-child(3n) { height: 62%; }
 .resource-spark i:nth-child(4n) { height: 45%; }
@@ -221,11 +225,16 @@ canvas {
 .resource-spark i:nth-child(7n) { height: 100%; }
 .hydrogen .resource-spark i { background: #8ed8ff; }
 .hud-footer { display: flex; justify-content: space-between; gap: 12px; padding-top: 9px; color: #648893; font: 600 8px/1 'Bahnschrift', 'Arial Narrow', sans-serif; letter-spacing: 1.1px; }
+#mainPanel .hud-footer { display: none; }
 .footer-divider { padding: 0 4px; color: #3a6470; }
 .hud-footer > span:last-child { display: flex; align-items: center; gap: 7px; }
 .flow-line { width: 32px; height: 1px; background: linear-gradient(90deg, transparent, var(--cyan)); }
+@media (max-width: 760px) {
+   #mainPanel { display: block; padding: 8px 12px 6px; }
+   #mainPanel .resource-list { margin-top: 4px; border-top: 1px solid rgba(102, 234, 255, .2); }
+}
 @media (max-width: 560px) {
-   #mainPanel { top: 10px; width: calc(100vw - 20px); padding: 11px 12px 9px; }
+   #mainPanel { top: 10px; display: block; width: calc(100vw - 20px); padding: 8px 10px 6px; }
    #selectionPanel { bottom: 10px; width: calc(100vw - 20px); padding: 10px 12px 8px; }
    #selectionPanel.is-collapsed { left: 10px; width: max-content; max-width: calc(100vw - 20px); padding: 7px; }
    .selected-unit { min-height: 76px; padding: 9px 0; }
@@ -239,7 +248,8 @@ canvas {
    .unit-stat-value { font-size: 12px; }
    .selection-count { padding: 4px 5px; font-size: 8px; }
    #selectionPanel .hud-footer { font-size: 6px; }
-   .resource-card { min-height: 73px; padding: 9px 6px; }
+   .resource-list { margin-top: 4px; border-top: 1px solid rgba(102, 234, 255, .2); }
+   .resource-card { min-height: 57px; padding: 7px 6px; }
    .resource-icon { flex-basis: 25px; width: 25px; height: 25px; margin-right: 6px; }
    .resource-icon svg { width: 16px; height: 16px; }
    .resource-value { font-size: clamp(18px, 5vw, 23px); }
@@ -247,6 +257,7 @@ canvas {
    .resource-unit, .resource-spark { display: none; }
    .resource-meta { font-size: 8px; }
    .hud-footer { font-size: 7px; letter-spacing: .5px; }
+   #mainPanel .hud-footer { display: none; }
 }
 @media (max-width: 420px) {
    .selected-unit { flex-wrap: wrap; }
