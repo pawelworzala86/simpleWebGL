@@ -61,6 +61,41 @@
          <div id="selectionContent" class="selection-content" aria-live="polite"></div>
          <div class="hud-footer"><span>STATUS JEDNOSTKI <span class="footer-divider">/</span> PODGLĄD TAKTYCZNY</span><span>ŁĄCZE DOWODZENIA <span class="flow-line"></span> AKTYWNE</span></div>
       </aside>
+      <aside id="buildingPanel" aria-label="Produkcja jednostek">
+         <div class="building-heading">
+            <div class="building-icon" aria-hidden="true">
+               <svg viewBox="0 0 24 24"><path d="M3.5 20.5h17M5.5 20.5V9.2L12 4l6.5 5.2v11.3M9 20.5v-6h6v6M8 10.5h.01M12 10.5h.01M16 10.5h.01"/></svg>
+            </div>
+            <div class="heading-copy">
+               <span class="eyebrow">BUILDING CONTROL <span>·</span> 03</span>
+               <span class="heading-title">CENTRUM PRODUKCJI</span>
+            </div>
+            <span class="building-status"><span class="status-dot"></span> ONLINE</span>
+         </div>
+         <div class="production-list" aria-label="Dostępne typy jednostek">
+            <article class="production-item" aria-label="Transporter, ship">
+               <span class="production-icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48"><path d="M8 29h32l-5 9H15l-7-9Z"/><path d="M17 29V17h14v12M20 17v-5h8v5M5 41h38M12 38l3 3m18-3-3 3"/></svg>
+               </span>
+               <span class="production-copy">
+                  <span class="production-name">TRANSPORTER</span>
+                  <span class="production-type">SHIP <span>·</span> CARGO VESSEL</span>
+               </span>
+               <span class="production-index">01</span>
+            </article>
+            <article class="production-item battle-production" aria-label="Okręt wojenny, battle">
+               <span class="production-icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48"><path d="M5 30h38l-6 8H13l-8-8Z"/><path d="M14 30V22h20v8M19 22v-6h10v6M24 16v-5m-4 0h8M18 38l-3 4m18-4 3 4M8 43h32"/></svg>
+               </span>
+               <span class="production-copy">
+                  <span class="production-name">OKRĘT WOJENNY</span>
+                  <span class="production-type">BATTLE <span>·</span> COMBAT SHIP</span>
+               </span>
+               <span class="production-index">02</span>
+            </article>
+         </div>
+         <div class="building-footer"><span>LINIA PRODUKCYJNA</span><span>JEDNOSTKI <span class="flow-line"></span> GOTOWE</span></div>
+      </aside>
    </body>
 <style>
 * { box-sizing: border-box; }
@@ -110,6 +145,23 @@ canvas {
    box-shadow: 0 8px 36px rgba(0, 0, 0, .4), 0 0 24px rgba(51, 208, 235, .09), inset 0 0 26px rgba(43, 192, 219, .045);
    clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
 }
+#buildingPanel {
+   --cyan: #66eaff;
+   --muted: #79a8b4;
+   position: fixed;
+   z-index: 5;
+   top: 100px;
+   left: 20px;
+   width: min(330px, calc(100vw - 40px));
+   padding: 12px 14px 10px;
+   overflow: hidden;
+   border: 1px solid rgba(102, 234, 255, .35);
+   background:
+      linear-gradient(110deg, rgba(10, 31, 40, .96), rgba(7, 22, 30, .91) 50%, rgba(9, 29, 38, .96)),
+      #081820;
+   box-shadow: 0 8px 36px rgba(0, 0, 0, .4), 0 0 24px rgba(51, 208, 235, .09), inset 0 0 26px rgba(43, 192, 219, .045);
+   clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+}
 #selectionPanel.is-collapsed {
    left: 20px;
    width: max-content;
@@ -126,17 +178,17 @@ canvas {
    content: "";
    pointer-events: none;
 }
-#selectionPanel::before, #selectionPanel::after {
+#selectionPanel::before, #selectionPanel::after, #buildingPanel::before, #buildingPanel::after {
    position: absolute;
    z-index: 0;
    content: "";
    pointer-events: none;
 }
-#selectionPanel::before {
+#selectionPanel::before, #buildingPanel::before {
    inset: 0;
    background: repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba(116, 225, 241, .018) 4px);
 }
-#selectionPanel::after {
+#selectionPanel::after, #buildingPanel::after {
    right: 0;
    bottom: 0;
    width: 45px;
@@ -158,6 +210,24 @@ canvas {
 }
 .hud-heading, .resource-list, .hud-footer, .selection-heading, .selection-content { position: relative; z-index: 1; }
 .selection-heading { display: flex; align-items: center; min-height: 34px; }
+.building-heading { position: relative; z-index: 1; display: flex; align-items: center; min-height: 34px; }
+.building-icon { display: grid; flex: 0 0 32px; width: 32px; height: 32px; place-items: center; margin-right: 10px; color: var(--cyan); border: 1px solid rgba(102, 234, 255, .32); background: rgba(57, 204, 230, .055); }
+.building-icon svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
+.building-status { display: flex; align-items: center; gap: 6px; margin-left: auto; color: #8eb3bc; font: 600 8px/1 'Bahnschrift', 'Arial Narrow', sans-serif; letter-spacing: 1px; }
+.building-status .status-dot { width: 5px; height: 5px; }
+.production-list { position: relative; z-index: 1; display: grid; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px solid rgba(102, 234, 255, .2); }
+.production-item { display: flex; align-items: center; min-height: 54px; padding: 6px 8px; border: 1px solid rgba(102, 234, 255, .16); background: rgba(57, 204, 230, .035); }
+.production-icon { display: grid; flex: 0 0 38px; width: 38px; height: 38px; place-items: center; margin-right: 10px; color: var(--cyan); border: 1px solid rgba(102, 234, 255, .26); background: rgba(57, 204, 230, .055); }
+.production-icon svg { width: 27px; height: 27px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.battle-production .production-icon { color: #8ed8ff; }
+.production-copy { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+.production-name { color: #e2fbff; font: 700 11px/1 'Bahnschrift', 'Arial Narrow', sans-serif; letter-spacing: 1px; }
+.production-type { color: #79a8b4; font: 600 8px/1 'Bahnschrift', 'Arial Narrow', sans-serif; letter-spacing: 1.1px; }
+.production-type span { padding: 0 3px; color: var(--cyan); }
+.production-index { margin-left: auto; color: #547a84; font: 600 9px/1 'Bahnschrift', 'Arial Narrow', sans-serif; letter-spacing: 1px; }
+.building-footer { position: relative; z-index: 1; display: flex; justify-content: space-between; gap: 8px; padding-top: 9px; color: #648893; font: 600 7px/1 'Bahnschrift', 'Arial Narrow', sans-serif; letter-spacing: .8px; }
+.building-footer > span:last-child { display: flex; align-items: center; gap: 5px; }
+.building-footer .flow-line { width: 20px; }
 .selection-count { margin-left: auto; padding: 5px 8px; color: var(--cyan); border: 1px solid rgba(102, 234, 255, .24); background: rgba(57, 204, 230, .055); font: 600 9px/1 'Bahnschrift', 'Arial Narrow', sans-serif; letter-spacing: 1px; white-space: nowrap; }
 .selection-thumbnails { position: relative; z-index: 1; display: none; align-items: center; gap: 7px; max-width: calc(100vw - 64px); margin-top: 9px; overflow-x: auto; }
 .selection-thumbnails.has-units { display: flex; }
@@ -232,9 +302,11 @@ canvas {
 @media (max-width: 760px) {
    #mainPanel { display: block; padding: 8px 12px 6px; }
    #mainPanel .resource-list { margin-top: 4px; border-top: 1px solid rgba(102, 234, 255, .2); }
+   #buildingPanel { top: 125px; }
 }
 @media (max-width: 560px) {
    #mainPanel { top: 10px; display: block; width: calc(100vw - 20px); padding: 8px 10px 6px; }
+   #buildingPanel { top: 130px; left: 10px; width: calc(100vw - 20px); padding: 9px 10px 8px; }
    #selectionPanel { bottom: 10px; width: calc(100vw - 20px); padding: 10px 12px 8px; }
    #selectionPanel.is-collapsed { left: 10px; width: max-content; max-width: calc(100vw - 20px); padding: 7px; }
    .selected-unit { min-height: 76px; padding: 9px 0; }
@@ -248,6 +320,13 @@ canvas {
    .unit-stat-value { font-size: 12px; }
    .selection-count { padding: 4px 5px; font-size: 8px; }
    #selectionPanel .hud-footer { font-size: 6px; }
+   .building-heading { min-height: 30px; }
+   .building-icon { flex-basis: 28px; width: 28px; height: 28px; margin-right: 8px; }
+   .building-icon svg { width: 19px; height: 19px; }
+   .production-list { gap: 5px; margin-top: 7px; padding-top: 7px; }
+   .production-item { min-height: 48px; padding: 4px 6px; }
+   .production-icon { flex-basis: 34px; width: 34px; height: 34px; margin-right: 8px; }
+   .production-icon svg { width: 24px; height: 24px; }
    .resource-list { margin-top: 4px; border-top: 1px solid rgba(102, 234, 255, .2); }
    .resource-card { min-height: 57px; padding: 7px 6px; }
    .resource-icon { flex-basis: 25px; width: 25px; height: 25px; margin-right: 6px; }
